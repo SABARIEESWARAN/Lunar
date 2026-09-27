@@ -1,0 +1,1765 @@
+LUNAR — FRONTEND
+================================================================================
+
+
+================================================================================
+FILE: frontend/index.html
+================================================================================
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LUNAR — Autonomous Software Maintenance</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
+
+================================================================================
+FILE: frontend/package-lock.json
+================================================================================
+
+{
+  "name": "lunar-frontend",
+  "version": "0.1.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "lunar-frontend",
+      "version": "0.1.0",
+      "dependencies": {
+        "@vitejs/plugin-react": "latest",
+        "react": "latest",
+        "react-dom": "latest",
+        "vite": "latest"
+      },
+      "devDependencies": {}
+    },
+    "node_modules/@oxc-project/types": {
+      "version": "0.151.0",
+      "resolved": "https://registry.npmjs.org/@oxc-project/types/-/types-0.151.0.tgz",
+      "integrity": "sha512-J1yXrIlNDZVzE3ada310xeAw7nH8yCAyLPuUIsjKatFPmfn5bS1oW+cM+QsGOtVWd5nhSpbwZWx/rue+r5Z+PA==",
+      "license": "MIT",
+      "funding": {
+        "url": "https://github.com/sponsors/oxc-project"
+      }
+    },
+    "node_modules/@rolldown/binding-android-arm-eabi": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm-eabi/-/binding-android-arm-eabi-1.2.11.tgz",
+      "integrity": "sha512-A5kXfGKvKWWZE0TtPrfsvT+q4Y5d1QG8gGUzpYjGydM+fARM9MuX90PrXYXe0XbsDVgyxxNzHo6giCj90bsFNw==",
+      "cpu": [
+        "arm"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-android-arm64": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm64/-/binding-android-arm64-1.2.11.tgz",
+      "integrity": "sha512-z6cTycz+iJ4PVkuL4HHW4DfTfoeU/2nqYYuSOrTmH7yHK5Y0LCOnA03V4ZNxavyVaU1oOqUgIg2klN/s+USGOA==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-darwin-arm64": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-arm64/-/binding-darwin-arm64-1.2.11.tgz",
+      "integrity": "sha512-jShvqNtP6vDC6/A5JOAzbVV+DkgHqhl/ScVCJEbt+TUY6QYz7YnXcrg3sLtFBniro0f/Ld50ZwCWA6f7KYD1nQ==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-darwin-x64": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-x64/-/binding-darwin-x64-1.2.11.tgz",
+      "integrity": "sha512-f2i2xiNWq1Z1l2++q2fuhZRdLAT3aqxD6vRNm1RAxpUoBcdqNB3C0s1Bt+K+PbEx2F5F4gQp6hqKkphCY/xF9w==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-freebsd-x64": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-freebsd-x64/-/binding-freebsd-x64-1.2.11.tgz",
+      "integrity": "sha512-4Ir5FSOKIAMr4r0kExpt1s3bMgzJU3rA45AYOHtQpls0oNeqcYBKrWMlckrYH4KCfGLfkfn1tN1dmZPMVsdXow==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-linux-arm-gnueabihf": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm-gnueabihf/-/binding-linux-arm-gnueabihf-1.2.11.tgz",
+      "integrity": "sha512-/gnRDM+39BROzAN/k1OZjDPnDMcZxB/0EUxKjONO5yVkNEvlsoMDrxGNKgZi/ttFriS2gwlDNzB65pvNbFOXIQ==",
+      "cpu": [
+        "arm"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-linux-arm64-gnu": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-gnu/-/binding-linux-arm64-gnu-1.2.11.tgz",
+      "integrity": "sha512-PFaK8HwvAHbaKbBcDNQihjMKYvFnA5hiENx/l5tphTDz1E0WFp32l0A7aq7lyUwGsRw/xSrNIy/gIK4thrSCrw==",
+      "cpu": [
+        "arm64"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-linux-arm64-musl": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-musl/-/binding-linux-arm64-musl-1.2.11.tgz",
+      "integrity": "sha512-AskzJUIKRLPxkruR1wLKewGbOw+EYfU/9lOrBFj4AFrEA8hPpKFnODWNu2WLaNs0QNkEb9QIJufmVZZIL/bJlg==",
+      "cpu": [
+        "arm64"
+      ],
+      "libc": [
+        "musl"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-linux-ppc64-gnu": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-ppc64-gnu/-/binding-linux-ppc64-gnu-1.2.11.tgz",
+      "integrity": "sha512-qlUGAheh2yh8afH7QBgx0PrRHN85hKnNd78x8MeMhXivuevgd8vgf6/CstOzmNKY/lLTHvNTrPy98cLnAugzJw==",
+      "cpu": [
+        "ppc64"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-linux-s390x-gnu": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-s390x-gnu/-/binding-linux-s390x-gnu-1.2.11.tgz",
+      "integrity": "sha512-secpEad+0vCbSfn8upFySkDskv+bGPk3THSDS9Y89yc4rb4kzqHp8Dmyd9BkQW4SnhNXBZCl/6CrO//hZahNJQ==",
+      "cpu": [
+        "s390x"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-linux-x64-gnu": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-1.2.11.tgz",
+      "integrity": "sha512-mOVBT3dPpkWm8XBWPmU4bf+U6dYDLeMo/9ojUmis4N0L5uu10qra5vOyngZ7/PSdoE4G9KvRt4bloRxNjLas7A==",
+      "cpu": [
+        "x64"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-linux-x64-musl": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-x64-musl/-/binding-linux-x64-musl-1.2.11.tgz",
+      "integrity": "sha512-Is78i9A8Ui4SqcxUwFJ9uMmjDn58IbVTjFWYdQestFEgeuEmHMLGNriXnVJKkwG2YiZjw8cP0zCTyDMdDGtOOg==",
+      "cpu": [
+        "x64"
+      ],
+      "libc": [
+        "musl"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-openharmony-arm64": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-openharmony-arm64/-/binding-openharmony-arm64-1.2.11.tgz",
+      "integrity": "sha512-dUCXneZ87INUMyQ0D+C0HrEBNUPNXHaPmU5GTjyKTJEiussw9Kaj5Ln8UztPe4epV/ffvgNBEadksdYhmW6xJA==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "openharmony"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-win32-arm64-msvc": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-win32-arm64-msvc/-/binding-win32-arm64-msvc-1.2.11.tgz",
+      "integrity": "sha512-jByxb6qfd+bH1xUd0qnfFnb17i9sWBPY2tOavJ0l3tdr3OTu+Kvtm8cd/JV5nFt657b1VqGltxg9olOEfofXWw==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/binding-win32-x64-msvc": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.2.11.tgz",
+      "integrity": "sha512-/PzKqzAJ03i19oy2ItPvyvaVjOjBCNnfaJs8yvUdGBKmiESgnrJSQ2awd81QzFbbnAmu7YO9ZnJrDCb9VSJPRA==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      }
+    },
+    "node_modules/@rolldown/pluginutils": {
+      "version": "1.0.1",
+      "resolved": "https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.1.tgz",
+      "integrity": "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==",
+      "license": "MIT"
+    },
+    "node_modules/@vitejs/plugin-react": {
+      "version": "6.1.1",
+      "resolved": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.1.1.tgz",
+      "integrity": "sha512-yxLaQV9gkhS8ezJqCM6+ndU7mDY6gqAg75NQ+0IjwEI8IYOmQCgkRwHKVSfWXW076DsqMo0Dk+0FK1U+M5RgFw==",
+      "license": "MIT",
+      "dependencies": {
+        "@rolldown/pluginutils": "^1.0.1"
+      },
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      },
+      "peerDependencies": {
+        "@rolldown/plugin-babel": "^0.1.7 || ^0.2.0",
+        "babel-plugin-react-compiler": "^1.0.0",
+        "oxc-transform-react": "^0.145.0",
+        "vite": "^8.0.0"
+      },
+      "peerDependenciesMeta": {
+        "@rolldown/plugin-babel": {
+          "optional": true
+        },
+        "babel-plugin-react-compiler": {
+          "optional": true
+        },
+        "oxc-transform-react": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/detect-libc": {
+      "version": "2.1.2",
+      "resolved": "https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz",
+      "integrity": "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==",
+      "license": "Apache-2.0",
+      "engines": {
+        "node": ">=8"
+      }
+    },
+    "node_modules/fdir": {
+      "version": "6.5.0",
+      "resolved": "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz",
+      "integrity": "sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=12.0.0"
+      },
+      "peerDependencies": {
+        "picomatch": "^3 || ^4"
+      },
+      "peerDependenciesMeta": {
+        "picomatch": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/fsevents": {
+      "version": "2.3.3",
+      "resolved": "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz",
+      "integrity": "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==",
+      "hasInstallScript": true,
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": "^8.16.0 || ^10.6.0 || >=11.0.0"
+      }
+    },
+    "node_modules/lightningcss": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss/-/lightningcss-1.33.0.tgz",
+      "integrity": "sha512-WkUDrojuJs0xkgGf2udWxa3yGBRxPtxUkB79i6aCZLRgc7PM8fZe9TosfPDcvEpQZbuFASnHYmRLBLUbmLOIIA==",
+      "license": "MPL-2.0",
+      "dependencies": {
+        "detect-libc": "^2.0.3"
+      },
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      },
+      "optionalDependencies": {
+        "lightningcss-android-arm64": "1.33.0",
+        "lightningcss-darwin-arm64": "1.33.0",
+        "lightningcss-darwin-x64": "1.33.0",
+        "lightningcss-freebsd-x64": "1.33.0",
+        "lightningcss-linux-arm-gnueabihf": "1.33.0",
+        "lightningcss-linux-arm64-gnu": "1.33.0",
+        "lightningcss-linux-arm64-musl": "1.33.0",
+        "lightningcss-linux-x64-gnu": "1.33.0",
+        "lightningcss-linux-x64-musl": "1.33.0",
+        "lightningcss-win32-arm64-msvc": "1.33.0",
+        "lightningcss-win32-x64-msvc": "1.33.0"
+      }
+    },
+    "node_modules/lightningcss-android-arm64": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-android-arm64/-/lightningcss-android-arm64-1.33.0.tgz",
+      "integrity": "sha512-gEpRTalKdosp4Bb8qWtc2iOgE5SeIHlpS1up9bFq2wAyYhl1UdTObYiHe98zEM9SQvSoqQZ1IQD0JNpg3Ml5pg==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-darwin-arm64": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-darwin-arm64/-/lightningcss-darwin-arm64-1.33.0.tgz",
+      "integrity": "sha512-Sciaz8eenNTKn9b3t7+xr0ipTp9YxKQY4npwQ3mrRuL0BAVHBLyZxofhaKBAVtzmtRZ/zTyo0/to4B1uWG/Djg==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-darwin-x64": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-darwin-x64/-/lightningcss-darwin-x64-1.33.0.tgz",
+      "integrity": "sha512-Z5UPAxzrjlWNNyGy6i65cJzzvgJ5D3T6wMvs+gWpY9d7qRhANrxqAp6LhxIgZhWEw18RfJTGcRxjuLIBr+m8XQ==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-freebsd-x64": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-freebsd-x64/-/lightningcss-freebsd-x64-1.33.0.tgz",
+      "integrity": "sha512-QQM/Ti/hQajJwCY+RiWuCZ9sdtI/XQk7nDK5vC8kkdwixezOlDgvDx7+RT+QjK6FcFT4MpsuoBnHIo/O3StRRg==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-linux-arm-gnueabihf": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm-gnueabihf/-/lightningcss-linux-arm-gnueabihf-1.33.0.tgz",
+      "integrity": "sha512-N7FVBe6iS24MlM6R/4RBTxGhQheZGs7tiQ9U32UtF75NzP5Q7xWPRqLBCKxlRQRk3rY1jCIPLzx7WzOhuUIRLQ==",
+      "cpu": [
+        "arm"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-linux-arm64-gnu": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm64-gnu/-/lightningcss-linux-arm64-gnu-1.33.0.tgz",
+      "integrity": "sha512-j2v/itmy4HlNxlc6voKXYgBqNi0Ng2LShg4z7GufpEgs05P+2suBVyi9I6YHq5uoVFx9ETin3eCEhLVyXGQnKg==",
+      "cpu": [
+        "arm64"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-linux-arm64-musl": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm64-musl/-/lightningcss-linux-arm64-musl-1.33.0.tgz",
+      "integrity": "sha512-yiO5ROMuYQgXbC60yjZU5CYSFZGKXL0HFATXt9mHJn1+zW55oCtMI9NfcVhYLMFDL7gV7oBPon/EmMMGg2OvtQ==",
+      "cpu": [
+        "arm64"
+      ],
+      "libc": [
+        "musl"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-linux-x64-gnu": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.33.0.tgz",
+      "integrity": "sha512-ar+Ju7LmcN0Jo4FpL4hpFybwNG9/3A/Br5KW2n2jyODg3MEZXaDYADdemoNS+BDNfMgKvylJLj4S5tyRActuAg==",
+      "cpu": [
+        "x64"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-linux-x64-musl": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-x64-musl/-/lightningcss-linux-x64-musl-1.33.0.tgz",
+      "integrity": "sha512-RYiYbkokw0trfKqqzfF55lginwEPrD3OJDfTuJzFs1MK6iFnDenaz1fqLLtX4ITG3OktJQXOeTaw1awrBAlZPw==",
+      "cpu": [
+        "x64"
+      ],
+      "libc": [
+        "musl"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-win32-arm64-msvc": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-win32-arm64-msvc/-/lightningcss-win32-arm64-msvc-1.33.0.tgz",
+      "integrity": "sha512-1K+MPfLSFVpphzpdbfkhlWk6wBrTObBzS2T6db10PNOZgR9GoVsAWzwNyuhUYYbTp23j+4RrncfujZ4uAzXvwA==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-win32-x64-msvc": {
+      "version": "1.33.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-win32-x64-msvc/-/lightningcss-win32-x64-msvc-1.33.0.tgz",
+      "integrity": "sha512-OlEICDx/Xl0FqSp4bry8zFnCvGpig3Gl4gCquvYwHuqJKEC1+n9NgDniFvqHGmMv1ZkqDJrDqKKSykTDX+ehuA==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/nanoid": {
+      "version": "3.3.19",
+      "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.19.tgz",
+      "integrity": "sha512-Y2tUNy4ouw6tq5oDSKeQYGOyhkUBhNOcGV/02KC+6kd9eDGqdZd++mjMiIDilrBYvjEnCYvVtsuHCuP+okSfug==",
+      "funding": [
+        {
+          "type": "github",
+          "url": "https://github.com/sponsors/ai"
+        }
+      ],
+      "license": "MIT",
+      "bin": {
+        "nanoid": "bin/nanoid.cjs"
+      },
+      "engines": {
+        "node": "^10 || ^12 || ^13.7 || ^14 || >=15.0.1"
+      }
+    },
+    "node_modules/picocolors": {
+      "version": "1.1.1",
+      "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+      "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==",
+      "license": "ISC"
+    },
+    "node_modules/picomatch": {
+      "version": "4.0.7",
+      "resolved": "https://registry.npmjs.org/picomatch/-/picomatch-4.0.7.tgz",
+      "integrity": "sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=12"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/jonschlinkert"
+      }
+    },
+    "node_modules/postcss": {
+      "version": "8.5.28",
+      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.28.tgz",
+      "integrity": "sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==",
+      "funding": [
+        {
+          "type": "opencollective",
+          "url": "https://opencollective.com/postcss/"
+        },
+        {
+          "type": "tidelift",
+          "url": "https://tidelift.com/funding/github/npm/postcss"
+        },
+        {
+          "type": "github",
+          "url": "https://github.com/sponsors/ai"
+        }
+      ],
+      "license": "MIT",
+      "dependencies": {
+        "nanoid": "^3.3.18",
+        "picocolors": "^1.1.1",
+        "source-map-js": "^1.2.1"
+      },
+      "engines": {
+        "node": "^10 || ^12 || >=14"
+      }
+    },
+    "node_modules/react": {
+      "version": "19.3.0",
+      "resolved": "https://registry.npmjs.org/react/-/react-19.3.0.tgz",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=0.10.0"
+      }
+    },
+    "node_modules/react-dom": {
+      "version": "19.3.0",
+      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.0.tgz",
+      "integrity": "sha512-JDk8dgif51OjFoDE70+OT9ICyYr+69HlmihNwp1+Nsfbna3t5sIiCa9ZJktDmQ4/1b/rn26hIAR2uYXDMr5r0Q==",
+      "license": "MIT",
+      "dependencies": {
+        "scheduler": "^0.28.0"
+      },
+      "peerDependencies": {
+        "react": "^19.3.0"
+      }
+    },
+    "node_modules/rolldown": {
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/rolldown/-/rolldown-1.2.11.tgz",
+      "integrity": "sha512-qpSwIyz0jHQq5qXBTNxFmE6664rJ7O+4TvPFOiOaBSrz8IOHc1koKKSqTM2H6u1UG1+TveuC6vaDHKXFOvb1Kw==",
+      "license": "MIT",
+      "dependencies": {
+        "@oxc-project/types": "=0.151.0",
+        "@rolldown/pluginutils": "^1.0.0"
+      },
+      "bin": {
+        "rolldown": "bin/cli.mjs"
+      },
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      },
+      "optionalDependencies": {
+        "@rolldown/binding-android-arm-eabi": "1.2.11",
+        "@rolldown/binding-android-arm64": "1.2.11",
+        "@rolldown/binding-darwin-arm64": "1.2.11",
+        "@rolldown/binding-darwin-x64": "1.2.11",
+        "@rolldown/binding-freebsd-x64": "1.2.11",
+        "@rolldown/binding-linux-arm-gnueabihf": "1.2.11",
+        "@rolldown/binding-linux-arm64-gnu": "1.2.11",
+        "@rolldown/binding-linux-arm64-musl": "1.2.11",
+        "@rolldown/binding-linux-ppc64-gnu": "1.2.11",
+        "@rolldown/binding-linux-s390x-gnu": "1.2.11",
+        "@rolldown/binding-linux-x64-gnu": "1.2.11",
+        "@rolldown/binding-linux-x64-musl": "1.2.11",
+        "@rolldown/binding-openharmony-arm64": "1.2.11",
+        "@rolldown/binding-win32-arm64-msvc": "1.2.11",
+        "@rolldown/binding-win32-x64-msvc": "1.2.11"
+      }
+    },
+    "node_modules/scheduler": {
+      "version": "0.28.0",
+      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.28.0.tgz",
+      "integrity": "sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==",
+      "license": "MIT"
+    },
+    "node_modules/source-map-js": {
+      "version": "1.2.1",
+      "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+      "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==",
+      "license": "BSD-3-Clause",
+      "engines": {
+        "node": ">=0.10.0"
+      }
+    },
+    "node_modules/tinyglobby": {
+      "version": "0.2.17",
+      "resolved": "https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.17.tgz",
+      "integrity": "sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==",
+      "license": "MIT",
+      "dependencies": {
+        "fdir": "^6.5.0",
+        "picomatch": "^4.0.4"
+      },
+      "engines": {
+        "node": ">=12.0.0"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/SuperchupuDev"
+      }
+    },
+    "node_modules/vite": {
+      "version": "8.3.1",
+      "resolved": "https://registry.npmjs.org/vite/-/vite-8.3.1.tgz",
+      "integrity": "sha512-/bvH9E9tmCXRGp2uXY3WbOldqpTwFkbha/8ANaEQ6VkxhH60KyqLwgZq6lG2y+4uT55x9+9eUHMpQ7uGnOCKjA==",
+      "license": "MIT",
+      "dependencies": {
+        "lightningcss": "^1.33.0",
+        "picomatch": "^4.0.7",
+        "postcss": "^8.5.28",
+        "rolldown": "~1.2.9",
+        "tinyglobby": "^0.2.17"
+      },
+      "bin": {
+        "vite": "bin/vite.js"
+      },
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      },
+      "funding": {
+        "url": "https://github.com/vitejs/vite?sponsor=1"
+      },
+      "optionalDependencies": {
+        "fsevents": "~2.3.3"
+      },
+      "peerDependencies": {
+        "@types/node": "^20.19.0 || >=22.12.0",
+        "@vitejs/devtools": "^0.7.1",
+        "esbuild": "^0.27.0 || ^0.28.0",
+        "jiti": ">=1.21.0",
+        "less": "^4.0.0",
+        "sass": "^1.70.0",
+        "sass-embedded": "^1.70.0",
+        "stylus": ">=0.54.8",
+        "sugarss": "^5.0.0",
+        "terser": "^5.16.0",
+        "tsx": "^4.8.1",
+        "yaml": "^2.4.2"
+      },
+      "peerDependenciesMeta": {
+        "@types/node": {
+          "optional": true
+        },
+        "@vitejs/devtools": {
+          "optional": true
+        },
+        "esbuild": {
+          "optional": true
+        },
+        "jiti": {
+          "optional": true
+        },
+        "less": {
+          "optional": true
+        },
+        "sass": {
+          "optional": true
+        },
+        "sass-embedded": {
+          "optional": true
+        },
+        "stylus": {
+          "optional": true
+        },
+        "sugarss": {
+          "optional": true
+        },
+        "terser": {
+          "optional": true
+        },
+        "tsx": {
+          "optional": true
+        },
+        "yaml": {
+          "optional": true
+        }
+      }
+    }
+  }
+}
+
+
+================================================================================
+FILE: frontend/package.json
+================================================================================
+
+{
+  "name":"lunar-frontend",
+  "private":true,
+  "version":"0.1.0",
+  "type":"module",
+  "scripts":{"dev":"vite","build":"vite build","preview":"vite preview"},
+  "dependencies":{"@vitejs/plugin-react":"latest","vite":"latest","react":"latest","react-dom":"latest"},
+  "devDependencies":{}
+}
+
+
+================================================================================
+FILE: frontend/src/main.jsx
+================================================================================
+
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createRoot } from "react-dom/client";
+import "./styles.css";
+
+const API = import.meta.env.VITE_API_URL || "";
+
+// ─── API helpers ──────────────────────────────────────────────────────────────
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, {
+    headers: { "Content-Type": "application/json" },
+    ...opts,
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.detail || `HTTP ${res.status}`);
+  return json;
+}
+
+// ─── App root ─────────────────────────────────────────────────────────────────
+
+function App() {
+  const [url, setUrl] = useState("demo://hospital");
+  const [jobId, setJobId] = useState(null);
+  const [job, setJob] = useState(null);   // full job status object
+  const [loading, setLoading] = useState(false);
+  const [view, setView] = useState("overview"); // overview | findings | agents | repair | verify
+  const [selectedFinding, setSelectedFinding] = useState(null);
+  const [repair, setRepair] = useState(null);      // current repair proposal
+  const [verification, setVerification] = useState(null);
+  const [diffData, setDiffData] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const [messages, setMessages] = useState([
+    { role: "ai", text: "I'm LUNAR. Give me a public GitHub repository and I'll map its maintenance risks." },
+  ]);
+  const [chat, setChat] = useState("");
+  const pollRef = useRef(null);
+
+  // ── Poll job status ──────────────────────────────────────────────────────
+  const startPolling = useCallback((id) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const j = await apiFetch(`/api/analyze/${id}`);
+        setJob(j);
+        if (j.status === "completed" || j.status === "failed") {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+          setLoading(false);
+          if (j.status === "failed") {
+            setMessages((m) => [...m, { role: "ai", text: `Analysis failed: ${j.error}` }]);
+          }
+        }
+      } catch (e) {
+        clearInterval(pollRef.current);
+        setLoading(false);
+      }
+    }, 1500);
+  }, []);
+
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  async function analyze() {
+    if (!url.trim()) return;
+    setLoading(true);
+    setJob(null);
+    setJobId(null);
+    setSelectedFinding(null);
+    setRepair(null);
+    setVerification(null);
+    setDiffData(null);
+    setActionError(null);
+    setView("overview");
+    try {
+      const res = await apiFetch("/api/analyze", {
+        method: "POST",
+        body: JSON.stringify({ repo_url: url }),
+      });
+      setJobId(res.job_id);
+      setJob({ job_id: res.job_id, status: "queued", progress: 0, stage: "queued", result: null });
+      startPolling(res.job_id);
+      setMessages((m) => [...m, { role: "user", text: `Analyze: ${url}` }, { role: "ai", text: "Analysis started. Running parallel agents…" }]);
+    } catch (e) {
+      setLoading(false);
+      setMessages((m) => [...m, { role: "ai", text: e.message }]);
+    }
+  }
+
+  // ── Repair actions ────────────────────────────────────────────────────────
+
+  async function prepareFix(finding) {
+    setActionLoading(true);
+    setActionError(null);
+    setRepair(null);
+    setDiffData(null);
+    setVerification(null);
+    try {
+      const r = await apiFetch("/api/repair", {
+        method: "POST",
+        body: JSON.stringify({ job_id: jobId, finding_id: finding.id }),
+      });
+      setRepair(r);
+      setView("repair");
+      if (r.status === "manual_review_required") {
+        setMessages((m) => [...m, { role: "ai", text: `Manual review required: ${r.reason}` }]);
+      } else {
+        setMessages((m) => [...m, { role: "ai", text: `Repair proposed for ${finding.title}. Review the diff before approving.` }]);
+      }
+    } catch (e) {
+      setActionError(e.message);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function viewDiff() {
+    if (!repair?.repair_id) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const d = await apiFetch(`/api/repair/${repair.repair_id}/diff`);
+      setDiffData(d);
+    } catch (e) {
+      setActionError(e.message);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function approveRepair() {
+    if (!repair?.repair_id) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const r = await apiFetch(`/api/repair/${repair.repair_id}/approve`, { method: "POST" });
+      setRepair((prev) => ({ ...prev, status: r.status }));
+      setMessages((m) => [...m, { role: "ai", text: "Repair approved. Run verification to confirm the change is safe." }]);
+    } catch (e) {
+      setActionError(e.message);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function rejectRepair() {
+    if (!repair?.repair_id) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const r = await apiFetch(`/api/repair/${repair.repair_id}/reject`, { method: "POST" });
+      setRepair((prev) => ({ ...prev, status: r.status }));
+      setMessages((m) => [...m, { role: "ai", text: "Repair rejected and workspace cleaned up." }]);
+    } catch (e) {
+      setActionError(e.message);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function runVerification() {
+    if (!repair?.repair_id) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const v = await apiFetch(`/api/verify/${repair.repair_id}`, { method: "POST" });
+      setVerification(v);
+      setRepair((prev) => ({ ...prev, status: v.status === "passed" ? "verified" : "verification_failed" }));
+      setView("verify");
+      setMessages((m) => [...m, { role: "ai", text: v.summary }]);
+    } catch (e) {
+      setActionError(e.message);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  // ── Chat ─────────────────────────────────────────────────────────────────
+
+  function ask() {
+    if (!chat.trim()) return;
+    const userMsg = chat;
+    setChat("");
+    let aiReply = "Analysis context is not loaded yet. Start an analysis first.";
+    if (job?.result) {
+      const data = job.result;
+      if (userMsg.toLowerCase().includes("critical")) {
+        const criticals = data.findings.filter((f) => f.severity === "critical");
+        aiReply = criticals.length > 0
+          ? `${criticals.length} critical finding(s): ${criticals.map((f) => f.title).join(", ")}.`
+          : "No critical findings detected.";
+      } else if (userMsg.toLowerCase().includes("health")) {
+        aiReply = `Health score: ${data.health_score}/100. Technical debt: ${data.technical_debt_hours}h estimated.`;
+      } else if (userMsg.toLowerCase().includes("fix") || userMsg.toLowerCase().includes("repair")) {
+        aiReply = selectedFinding
+          ? `Select 'PREPARE FIX' on the finding panel to generate a repair proposal for: ${selectedFinding.title}.`
+          : "Select a finding from the Priority Findings list, then use PREPARE FIX.";
+      } else {
+        aiReply = `Repository scanned: ${data.repository.files} files, ${data.findings.length} findings, health ${data.health_score}/100, debt ${data.technical_debt_hours}h.`;
+      }
+    }
+    setMessages((m) => [...m, { role: "user", text: userMsg }, { role: "ai", text: aiReply }]);
+  }
+
+  const data = job?.result;
+
+  return (
+    <div className="app">
+      <aside>
+        <div className="logo">LUNAR<span>●</span></div>
+        <div className="tag">AUTONOMOUS MAINTENANCE</div>
+        <nav>
+          <b onClick={() => setView("overview")} style={{ cursor: "pointer" }}>Overview</b>
+          <span onClick={() => setView("findings")} style={{ cursor: "pointer", background: view === "findings" ? "#151e2c" : undefined, color: view === "findings" ? "#fff" : undefined }}>Findings</span>
+          <span onClick={() => setView("agents")} style={{ cursor: "pointer", background: view === "agents" ? "#151e2c" : undefined, color: view === "agents" ? "#fff" : undefined }}>Agents</span>
+          {repair && <span onClick={() => setView("repair")} style={{ cursor: "pointer", background: view === "repair" ? "#151e2c" : undefined, color: view === "repair" ? "#fff" : undefined }}>Repair</span>}
+          {verification && <span onClick={() => setView("verify")} style={{ cursor: "pointer", background: view === "verify" ? "#151e2c" : undefined, color: view === "verify" ? "#fff" : undefined }}>Verification</span>}
+        </nav>
+        <div className="sidecard">
+          <small>WORKSPACE</small>
+          <strong>Hospital Demo</strong>
+          <span>Public repository</span>
+        </div>
+      </aside>
+
+      <main>
+        <header>
+          <div>
+            <small>REPOSITORY / ANALYSIS</small>
+            <h1>Codebase Health</h1>
+          </div>
+          <div className="live" style={{ color: loading ? "#78a7ff" : data ? "#73d6a2" : "#73d6a2" }}>
+            ● {loading ? "ANALYZING" : data ? "ANALYSIS COMPLETE" : "SYSTEM READY"}
+          </div>
+        </header>
+
+        <section className="repo">
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !loading && analyze()}
+            placeholder="https://github.com/owner/public-repository"
+          />
+          <button onClick={analyze} disabled={loading || !url.trim()}>
+            {loading ? "ANALYZING…" : "START ANALYSIS"}
+          </button>
+          <button className="secondary" onClick={() => { setUrl("demo://hospital"); }} disabled={loading}>
+            LOAD HOSPITAL DEMO
+          </button>
+        </section>
+
+        {/* Progress bar during analysis */}
+        {loading && job && (
+          <div style={{ margin: "14px 0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#66758a", marginBottom: 6 }}>
+              <span>{STAGE_LABELS[job.stage] || job.stage}</span>
+              <span>{job.progress}%</span>
+            </div>
+            <div style={{ background: "#111a28", borderRadius: 6, height: 6 }}>
+              <div style={{ background: "#4d7cff", height: 6, borderRadius: 6, width: `${job.progress}%`, transition: "width 0.4s ease" }} />
+            </div>
+          </div>
+        )}
+
+        {actionError && (
+          <div style={{ background: "#1e1020", border: "1px solid #7c1f2e", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#f87171" }}>
+            {actionError}
+          </div>
+        )}
+
+        {!data && !loading && <EmptyState />}
+
+        {data && view === "overview" && (
+          <Dashboard
+            data={data}
+            selectedFinding={selectedFinding}
+            setSelectedFinding={setSelectedFinding}
+            onPrepareFix={prepareFix}
+            onViewDiff={viewDiff}
+            repair={repair}
+            actionLoading={actionLoading}
+          />
+        )}
+        {data && view === "findings" && (
+          <FindingsView
+            data={data}
+            selectedFinding={selectedFinding}
+            setSelectedFinding={setSelectedFinding}
+            onPrepareFix={prepareFix}
+            repair={repair}
+            actionLoading={actionLoading}
+          />
+        )}
+        {data && view === "agents" && <AgentsView data={data} />}
+        {view === "repair" && repair && (
+          <RepairView
+            repair={repair}
+            diffData={diffData}
+            onViewDiff={viewDiff}
+            onApprove={approveRepair}
+            onReject={rejectRepair}
+            onVerify={runVerification}
+            actionLoading={actionLoading}
+          />
+        )}
+        {view === "verify" && verification && (
+          <VerificationView verification={verification} />
+        )}
+      </main>
+
+      <section className="chat">
+        <div className="chathead"><b>LUNAR AI</b><span>● Online</span></div>
+        <div className="msgs">
+          {messages.map((m, i) => (
+            <div key={i} className={m.role}>{m.text}</div>
+          ))}
+        </div>
+        <div className="chatbox">
+          <input
+            value={chat}
+            onChange={(e) => setChat(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && ask()}
+            placeholder="Ask about this codebase…"
+          />
+          <button onClick={ask}>↑</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ─── Stage labels ─────────────────────────────────────────────────────────────
+
+const STAGE_LABELS = {
+  queued: "Queued",
+  cloning: "Cloning repository…",
+  scanning: "Starting parallel agents…",
+  agent_code_intelligence_completed: "Code intelligence agent done",
+  agent_security_dependencies_completed: "Security agent done",
+  agent_test_documentation_completed: "Tests & docs agent done",
+  consolidating: "Consolidating findings…",
+  completed: "Analysis complete",
+  failed: "Analysis failed",
+};
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <section className="empty">
+      <div className="orb">L</div>
+      <h2>Turn technical debt into verified maintenance</h2>
+      <p>Connect a public GitHub repository to run LUNAR's parallel analysis workflow.</p>
+    </section>
+  );
+}
+
+// ─── Overview Dashboard ───────────────────────────────────────────────────────
+
+function Dashboard({ data, selectedFinding, setSelectedFinding, onPrepareFix, onViewDiff, repair, actionLoading }) {
+  const s = data.severity_counts;
+  return (
+    <div>
+      <div className="metrics">
+        <Metric label="CODE HEALTH" value={data.health_score + "/100"} trend="Higher is healthier" />
+        <Metric label="TECHNICAL DEBT" value={data.technical_debt_hours + "h"} trend="Estimated remediation" />
+        <Metric label="CRITICAL" value={s.CRITICAL || 0} trend="Immediate attention" />
+        <Metric label="HIGH" value={s.HIGH || 0} trend="Priority findings" />
+      </div>
+
+      <div className="grid">
+        <div className="panel">
+          <div className="paneltitle"><b>Agent Network</b><span>{data.analysis_seconds}s</span></div>
+          <div className="agents">
+            {Object.entries(data.agent_status).map(([k, v]) => {
+              const status = typeof v === "object" ? v.status : v;
+              const count = typeof v === "object" ? v.findings : null;
+              const isDone = status === "completed";
+              return (
+                <div className="agent" key={k}>
+                  <i className={isDone ? "done" : ""}></i>
+                  <span>{k.replaceAll("_", " ")}</span>
+                  <em>{isDone && count != null ? `${count} findings` : status.replaceAll("_", " ")}</em>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="panel">
+          <div className="paneltitle"><b>Repository</b><span>{data.repository.files} files</span></div>
+          <div className="repoStats">
+            <strong>{data.repository.lines.toLocaleString()}</strong>
+            <span>lines analyzed</span>
+            {Object.entries(data.repository.languages).map(([k, v]) => (
+              <div key={k}>{k}<b>{v} files</b></div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {data.priority_summary?.immediate_action_required && (
+        <div style={{ background: "#1e0a0a", border: "1px solid #7c1f2e", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#f87171" }}>
+          ⚠ CRITICAL findings detected — immediate action required. See Priority Findings below.
+        </div>
+      )}
+      <div className="panel">
+        <div className="paneltitle">
+          <b>Priority Findings</b>
+          <span>{data.total_findings || data.findings.length} detected · {data.priority_summary?.repairable_count || 0} auto-repairable</span>
+        </div>
+        <div className="findings">
+          {data.findings.slice(0, 10).map((f) => (
+            <button
+              className={"finding" + (selectedFinding?.id === f.id ? " selected" : "")}
+              onClick={() => setSelectedFinding(f)}
+              key={f.id}
+            >
+              <span className={"sev " + f.severity}>{f.severity.toUpperCase()}</span>
+              <div>
+                <b>{f.title}</b>
+                <small>{f.file}{f.line ? `:${f.line}` : ""}</small>
+                {f.repairable && <small style={{ color: "#73d6a2", marginLeft: 8 }}>● auto-repair</small>}
+              </div>
+              <strong>{f.estimated_effort_min}m</strong>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {selectedFinding && (
+        <FindingDetail
+          finding={selectedFinding}
+          onClose={() => setSelectedFinding(null)}
+          onPrepareFix={onPrepareFix}
+          repair={repair}
+          actionLoading={actionLoading}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Findings View ────────────────────────────────────────────────────────────
+
+function FindingsView({ data, selectedFinding, setSelectedFinding, onPrepareFix, repair, actionLoading }) {
+  const [filter, setFilter] = useState("all");
+  const filtered = filter === "all" ? data.findings : data.findings.filter((f) => f.severity === filter);
+
+  return (
+    <div>
+      <div className="panel">
+        <div className="paneltitle">
+          <b>All Findings</b>
+          <div style={{ display: "flex", gap: 8 }}>
+            {["all", "critical", "high", "medium", "low"].map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilter(s)}
+                style={{
+                  background: filter === s ? "#172235" : "transparent",
+                  border: "1px solid #30415a",
+                  color: "#cdd9e8",
+                  borderRadius: 6,
+                  padding: "3px 10px",
+                  fontSize: 10,
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  letterSpacing: ".5px",
+                  textTransform: "uppercase",
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="findings">
+          {filtered.map((f) => (
+            <button
+              className={"finding" + (selectedFinding?.id === f.id ? " selected" : "")}
+              onClick={() => setSelectedFinding(f)}
+              key={f.id}
+            >
+              <span className={"sev " + f.severity}>{f.severity.toUpperCase()}</span>
+              <div>
+                <b>{f.title}</b>
+                <small>{f.file}</small>
+                {f.repairable && <small style={{ color: "#73d6a2", marginLeft: 8 }}>● Auto-repairable</small>}
+              </div>
+              <strong>{f.estimated_effort_min}m</strong>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {selectedFinding && (
+        <FindingDetail
+          finding={selectedFinding}
+          onClose={() => setSelectedFinding(null)}
+          onPrepareFix={onPrepareFix}
+          repair={repair}
+          actionLoading={actionLoading}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Agents View ──────────────────────────────────────────────────────────────
+
+const AGENT_DESCRIPTIONS = {
+  code_intelligence: "AST complexity, duplication, maintenance markers, silent error handlers",
+  security_dependencies: "Hard-coded credentials, dynamic execution, shell injection, outdated dependencies",
+  test_documentation: "Test coverage gaps, missing README, missing docstrings",
+  debt_analyst: "Consolidation, evidence-based priority scoring, AI recommendations",
+  repair: "Isolated patch generation in temporary workspace — never modifies original repo",
+  verification: "Syntax checks, test runner, before/after metric comparison",
+};
+
+function AgentsView({ data }) {
+  return (
+    <div>
+      <div className="panel">
+        <div className="paneltitle"><b>Six-Agent Workflow</b><span>{data.analysis_seconds}s analysis</span></div>
+        <div className="agents">
+          {Object.entries(data.agent_status).map(([k, v]) => {
+            const status = typeof v === "object" ? v.status : v;
+            const count = typeof v === "object" ? v.findings : null;
+            const elapsedMs = typeof v === "object" ? v.elapsed_ms : null;
+            const isDone = status === "completed";
+            const isWaiting = status.includes("waiting");
+            return (
+              <div className="agent" key={k} style={{ padding: "10px 0" }}>
+                <i className={isDone ? "done" : ""}></i>
+                <div style={{ flex: 1 }}>
+                  <span style={{ display: "block", fontSize: 13, fontWeight: 600 }}>
+                    {k.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  </span>
+                  <small style={{ color: "#66758a" }}>{AGENT_DESCRIPTIONS[k] || ""}</small>
+                  {isDone && count != null && (
+                    <small style={{ color: "#73d6a2", display: "block", marginTop: 2 }}>
+                      {count} finding{count !== 1 ? "s" : ""}{elapsedMs ? ` · ${elapsedMs}ms` : ""}
+                    </small>
+                  )}
+                </div>
+                <em style={{ color: isDone ? "#73d6a2" : isWaiting ? "#66758a" : "#78a7ff", fontSize: 10 }}>
+                  {status.replaceAll("_", " ")}
+                </em>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="panel" style={{ marginTop: 14 }}>
+        <div className="paneltitle"><b>Category Breakdown</b></div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
+          {Object.entries(data.category_counts).map(([cat, count]) => (
+            <div key={cat} style={{ background: "#0d131e", border: "1px solid #263448", borderRadius: 8, padding: "8px 14px", fontSize: 12 }}>
+              <div style={{ color: "#66758a", fontSize: 10, textTransform: "uppercase", letterSpacing: ".5px" }}>{cat}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: "#dce7f5" }}>{count}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Finding Detail ───────────────────────────────────────────────────────────
+
+function FindingDetail({ finding, onClose, onPrepareFix, repair, actionLoading }) {
+  const alreadyRepaired = repair && repair.finding_id === finding.id;
+  const rec = finding.ai_recommendation || {};
+
+  return (
+    <div className="panel detail">
+      <div className="paneltitle">
+        <b>{finding.title}</b>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "#8d9aad", fontSize: 18, cursor: "pointer" }}>×</button>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+        <span className={"sev " + finding.severity}>{finding.severity.toUpperCase()}</span>
+        <span style={{ fontSize: 10, background: "#111a28", border: "1px solid #263448", borderRadius: 4, padding: "3px 8px", color: "#8d9aad" }}>{finding.category}</span>
+        {finding.repairable && <span style={{ fontSize: 10, background: "#0d2818", border: "1px solid #244a3c", borderRadius: 4, padding: "3px 8px", color: "#73d6a2" }}>● auto-repairable</span>}
+        {finding.priority_score > 0 && (
+          <span style={{ fontSize: 10, background: "#111a28", border: "1px solid #263448", borderRadius: 4, padding: "3px 8px", color: "#78a7ff" }}>
+            priority {finding.priority_score}
+          </span>
+        )}
+      </div>
+
+      <p><b>File:</b> <code style={{ fontSize: 11 }}>{finding.file}{finding.line ? `:${finding.line}` : ""}</code></p>
+      <p><b>Evidence:</b> {finding.evidence}</p>
+
+      {rec.what_is_wrong && (
+        <div style={{ background: "#0d131e", border: "1px solid #1b2534", borderRadius: 8, padding: "12px", margin: "10px 0" }}>
+          <div style={{ fontSize: 10, color: "#66758a", textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 8 }}>LUNAR AI Recommendation</div>
+          <p style={{ color: "#dce7f5", marginBottom: 6 }}><b>What:</b> {rec.what_is_wrong}</p>
+          <p style={{ color: "#a8b5c6", marginBottom: 6 }}><b>Why it matters:</b> {rec.why_it_matters}</p>
+          <p style={{ color: "#a8b5c6", marginBottom: 6 }}><b>Action:</b> {rec.recommended_action}</p>
+          <div style={{ display: "flex", gap: 14, fontSize: 11, color: "#66758a", marginTop: 8 }}>
+            <span>⏱ {rec.estimated_effort}</span>
+            <span>⚡ Risk: {rec.risk_level}</span>
+            <span style={{ color: rec.lunar_can_automate ? "#73d6a2" : "#8d9aad" }}>
+              {rec.lunar_can_automate ? "✓ LUNAR can automate" : "○ Manual repair needed"}
+            </span>
+          </div>
+          {rec.verification_required && (
+            <p style={{ marginTop: 8, fontSize: 10, color: "#66758a" }}>🔍 Verification: {rec.verification_required}</p>
+          )}
+        </div>
+      )}
+
+      <div className="actions">
+        {!alreadyRepaired && (
+          <button
+            className="primary"
+            onClick={() => onPrepareFix(finding)}
+            disabled={actionLoading}
+          >
+            {actionLoading ? "PREPARING…" : "PREPARE FIX"}
+          </button>
+        )}
+        {alreadyRepaired && (
+          <span style={{ fontSize: 12, color: "#73d6a2" }}>✓ Repair proposed — see Repair panel</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Repair View ──────────────────────────────────────────────────────────────
+
+function RepairView({ repair, diffData, onViewDiff, onApprove, onReject, onVerify, actionLoading }) {
+  const canApprove = repair.status === "proposed";
+  const canVerify = repair.status === "approved";
+  const isDone = ["verified", "verification_failed", "rejected"].includes(repair.status);
+
+  if (repair.status === "manual_review_required") {
+    return (
+      <div className="panel">
+        <div className="paneltitle"><b>Repair Proposal</b><span style={{ color: "#f97316" }}>Manual Review Required</span></div>
+        <p style={{ marginTop: 8, color: "#8d9aad" }}>{repair.reason}</p>
+        <p style={{ marginTop: 8, fontSize: 12 }}>This finding cannot be safely repaired automatically. A developer must review and implement the fix manually based on the recommendation.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="panel">
+        <div className="paneltitle">
+          <b>Repair Proposal</b>
+          <span style={{ color: STATUS_COLORS[repair.status] || "#78a7ff" }}>{repair.status.toUpperCase().replaceAll("_", " ")}</span>
+        </div>
+        <p><b>Finding:</b> {repair.finding?.title}</p>
+        <p><b>File:</b> <code style={{ fontSize: 11 }}>{repair.file}</code></p>
+        <p><b>Description:</b> {repair.description}</p>
+        <p><b>Risk:</b> {repair.risk}</p>
+
+        {!isDone && (
+          <div className="actions" style={{ marginTop: 14 }}>
+            <button onClick={onViewDiff} disabled={actionLoading}>VIEW DIFF</button>
+            {canApprove && (
+              <>
+                <button className="primary" onClick={onApprove} disabled={actionLoading}>
+                  {actionLoading ? "…" : "APPROVE"}
+                </button>
+                <button onClick={onReject} disabled={actionLoading} style={{ color: "#f87171", borderColor: "#7c1f2e" }}>
+                  REJECT
+                </button>
+              </>
+            )}
+            {canVerify && (
+              <button className="primary" onClick={onVerify} disabled={actionLoading}>
+                {actionLoading ? "VERIFYING…" : "RUN VERIFICATION"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {repair.status === "rejected" && (
+          <p style={{ marginTop: 12, color: "#f87171", fontSize: 13 }}>✗ Repair rejected. Workspace cleaned up.</p>
+        )}
+        {repair.status === "verified" && (
+          <p style={{ marginTop: 12, color: "#73d6a2", fontSize: 13 }}>✓ Repair verified successfully.</p>
+        )}
+        {repair.status === "verification_failed" && (
+          <p style={{ marginTop: 12, color: "#f97316", fontSize: 13 }}>⚠ Verification failed. See Verification panel for details.</p>
+        )}
+      </div>
+
+      {diffData && (
+        <div className="panel" style={{ marginTop: 14 }}>
+          <div className="paneltitle"><b>Diff</b><span>{diffData.file}</span></div>
+          <DiffViewer diff={diffData.diff} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Diff Viewer ──────────────────────────────────────────────────────────────
+
+function DiffViewer({ diff }) {
+  if (!diff) {
+    return <p style={{ color: "#66758a", fontSize: 13, padding: "8px 0" }}>No diff available (file may be new or unchanged).</p>;
+  }
+  return (
+    <pre style={{
+      background: "#070b12",
+      border: "1px solid #1b2534",
+      borderRadius: 8,
+      padding: 14,
+      overflowX: "auto",
+      fontSize: 12,
+      lineHeight: 1.7,
+      fontFamily: '"SFMono-Regular", Consolas, monospace',
+      margin: 0,
+    }}>
+      {diff.split("\n").map((line, i) => {
+        let color = "#8d9aad";
+        if (line.startsWith("+") && !line.startsWith("+++")) color = "#73d6a2";
+        else if (line.startsWith("-") && !line.startsWith("---")) color = "#f87171";
+        else if (line.startsWith("@@")) color = "#78a7ff";
+        else if (line.startsWith("---") || line.startsWith("+++")) color = "#dce7f5";
+        return <span key={i} style={{ color, display: "block" }}>{line}</span>;
+      })}
+    </pre>
+  );
+}
+
+// ─── Verification View ────────────────────────────────────────────────────────
+
+function VerificationView({ verification }) {
+  const statusColor = { passed: "#73d6a2", failed: "#f87171", partial: "#f97316" }[verification.status] || "#78a7ff";
+  const b = verification.before_metrics;
+  const a = verification.after_metrics;
+  const imp = verification.improvement;
+
+  return (
+    <div>
+      <div className="panel">
+        <div className="paneltitle">
+          <b>Verification Result</b>
+          <span style={{ color: statusColor, fontWeight: 700 }}>{verification.status.toUpperCase()}</span>
+        </div>
+        <p style={{ marginBottom: 12 }}>{verification.summary}</p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+          <MetricCompare label="Health Score" before={b.health_score} after={a.health_score} unit="/100" higherBetter />
+          <MetricCompare label="Total Findings" before={b.total_findings} after={a.total_findings} higherBetter={false} />
+          <MetricCompare label="Technical Debt" before={b.technical_debt_hours} after={a.technical_debt_hours} unit="h" higherBetter={false} />
+          <MetricCompare label="Critical Findings" before={b.severity_counts?.CRITICAL || 0} after={a.severity_counts?.CRITICAL || 0} higherBetter={false} />
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginTop: 14 }}>
+        <div className="paneltitle"><b>Verification Checks</b></div>
+        {verification.checks.map((c, i) => (
+          <div key={i} style={{
+            display: "flex", gap: 12, padding: "10px 0",
+            borderBottom: "1px solid #111a28", alignItems: "flex-start",
+          }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
+              background: c.status === "passed" ? "#0d2818" : c.status === "failed" ? "#1e1020" : "#111a28",
+              color: c.status === "passed" ? "#73d6a2" : c.status === "failed" ? "#f87171" : "#66758a",
+              whiteSpace: "nowrap",
+            }}>{c.status.toUpperCase()}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</div>
+              {c.output && (
+                <pre style={{ fontSize: 11, color: "#66758a", marginTop: 4, background: "#070b12", padding: "6px 10px", borderRadius: 6, overflowX: "auto", whiteSpace: "pre-wrap" }}>
+                  {c.output.slice(0, 500)}
+                </pre>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {verification.regressions.length > 0 && (
+        <div className="panel" style={{ marginTop: 14, border: "1px solid #7c1f2e" }}>
+          <div className="paneltitle"><b>Regressions Detected</b></div>
+          {verification.regressions.map((r, i) => (
+            <p key={i} style={{ color: "#f87171", fontSize: 13 }}>⚠ {r.description}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MetricCompare({ label, before, after, unit = "", higherBetter }) {
+  const delta = (after ?? 0) - (before ?? 0);
+  const improved = higherBetter ? delta >= 0 : delta <= 0;
+  const deltaStr = delta === 0 ? "±0" : (delta > 0 ? `+${delta}` : `${delta}`);
+  return (
+    <div style={{ background: "#0d131e", border: "1px solid #1b2534", borderRadius: 8, padding: "10px 14px" }}>
+      <div style={{ fontSize: 10, color: "#66758a", textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 6 }}>{label}</div>
+      <div style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
+        <span style={{ fontSize: 13, color: "#8d9aad" }}>{before}{unit}</span>
+        <span style={{ fontSize: 11, color: "#66758a" }}>→</span>
+        <span style={{ fontSize: 18, fontWeight: 700, color: "#dce7f5" }}>{after}{unit}</span>
+        <span style={{ fontSize: 12, color: improved ? "#73d6a2" : "#f87171", fontWeight: 700 }}>{deltaStr}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared components ────────────────────────────────────────────────────────
+
+function Metric({ label, value, trend }) {
+  return (
+    <div className="metric">
+      <small>{label}</small>
+      <strong>{value}</strong>
+      <span>{trend}</span>
+    </div>
+  );
+}
+
+const STATUS_COLORS = {
+  proposed: "#78a7ff",
+  approved: "#73d6a2",
+  rejected: "#f87171",
+  verified: "#73d6a2",
+  verification_failed: "#f97316",
+};
+
+// ─── Mount ────────────────────────────────────────────────────────────────────
+
+createRoot(document.getElementById("root")).render(<App />);
+
+
+================================================================================
+FILE: frontend/src/styles.css
+================================================================================
+
+*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui;background:#070b12;color:#e9eef7}.app{min-height:100vh;display:grid;grid-template-columns:220px 1fr 310px;background:radial-gradient(circle at 50% -10%,#17243a,#070b12 45%)}aside{border-right:1px solid #1b2534;padding:28px 18px}.logo{font-size:25px;font-weight:800;letter-spacing:4px}.logo span{color:#78a7ff;margin-left:6px}.tag{font-size:8px;color:#65748a;letter-spacing:2px;margin:5px 0 42px}nav{display:flex;flex-direction:column;gap:7px}nav span,nav b{padding:12px 13px;border-radius:9px;font-size:13px;color:#8d9aad;font-weight:500}nav b{background:#151e2c;color:#fff}.sidecard{position:absolute;bottom:22px;width:180px;border:1px solid #202c3c;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:5px}.sidecard small{color:#5f7088;font-size:9px}.sidecard strong{font-size:12px}.sidecard span{font-size:10px;color:#748196}main{padding:28px 34px;overflow:auto}header{display:flex;justify-content:space-between;align-items:center}header small{color:#66758a;font-size:9px;letter-spacing:2px}h1{font-size:26px;margin:7px 0 25px}.live{font-size:9px;color:#73d6a2;border:1px solid #244a3c;padding:8px 10px;border-radius:20px}.repo{display:flex;gap:10px}.repo input{flex:1;background:#0d131e;border:1px solid #263448;color:#dce7f5;border-radius:9px;padding:14px}.repo button,.actions button{background:#172235;color:#cdd9e8;border:1px solid #30415a;border-radius:8px;padding:0 15px;font-size:10px;font-weight:700;letter-spacing:.5px}.repo button{background:#4d7cff;color:#fff;border:0}.empty{text-align:center;margin-top:16vh;color:#7b899c}.orb{margin:auto;width:70px;height:70px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#5d7fff,#9c6cff);box-shadow:0 0 55px #4e67b955;font-weight:900;font-size:25px;color:white}.empty h2{color:#dce6f4;font-size:20px;margin-bottom:7px}.empty p{font-size:13px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:10px 0 15px}.metric,.panel{background:#0d131d;border:1px solid #1c2939;border-radius:11px}.metric{padding:17px}.metric small{font-size:9px;color:#63738a;letter-spacing:1px}.metric strong{display:block;font-size:28px;margin:8px 0}.metric span{font-size:10px;color:#6f7f94}.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px}.panel{padding:17px;margin-bottom:15px}.paneltitle{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;font-size:12px}.paneltitle span{font-size:10px;color:#718097}.agents{display:grid;grid-template-columns:1fr 1fr;gap:8px}.agent{padding:10px;background:#101824;border-radius:7px;display:flex;align-items:center;gap:8px}.agent i{width:7px;height:7px;border-radius:50%;background:#667386}.agent i.done{background:#6ed6a2;box-shadow:0 0 8px #6ed6a288}.agent span{text-transform:capitalize;font-size:10px;flex:1}.agent em{font-style:normal;color:#6d7c91;font-size:8px}.repoStats{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:10px;color:#8190a3}.repoStats strong{font-size:28px;color:#e8eef8;grid-column:1/-1}.repoStats span{grid-column:1/-1;margin-top:-6px}.repoStats div{padding-top:7px;border-top:1px solid #1b2634}.repoStats div b{float:right;color:#dbe5f2}.finding{width:100%;display:grid;grid-template-columns:75px 1fr 50px;gap:10px;align-items:center;text-align:left;background:transparent;border:0;border-top:1px solid #1b2533;color:#dce5f2;padding:12px 4px;cursor:pointer}.finding small{display:block;color:#65748a;font-size:9px;margin-top:4px}.finding strong{font-size:10px;color:#7c8ba0}.sev{font-size:8px;font-weight:800;padding:5px 7px;border-radius:4px;text-align:center;background:#26303e}.sev.critical{background:#45232c;color:#ff8c9c}.sev.high{background:#443421;color:#ffc779}.sev.medium{background:#26394b;color:#8fc4ff}.sev.low{background:#23382f;color:#82d7a8}.detail p{font-size:11px;color:#a8b5c6;line-height:1.6}.actions{display:flex;gap:8px}.actions .primary{background:#527cff;color:white}.chat{border-left:1px solid #1b2534;padding:20px;display:flex;flex-direction:column}.chathead{display:flex;justify-content:space-between;border-bottom:1px solid #1b2534;padding:9px 0 17px;font-size:12px}.chathead span{color:#69d39b;font-size:9px}.msgs{flex:1;padding-top:15px;display:flex;flex-direction:column;gap:10px;overflow:auto}.msgs div{font-size:11px;line-height:1.5;padding:10px;border-radius:8px;max-width:90%}.msgs .ai{background:#111a27;color:#aebbd0}.msgs .user{background:#263b66;align-self:flex-end;color:#e4ecfa}.chatbox{display:flex;margin-top:12px;border:1px solid #27364a;border-radius:8px;overflow:hidden}.chatbox input{width:100%;background:#0d131d;border:0;padding:11px;color:white;outline:0;font-size:10px}.chatbox button{background:#4f7cff;color:white;border:0;width:38px}@media(max-width:1000px){.app{grid-template-columns:70px 1fr}.chat{display:none}aside{padding:20px 10px}.tag,nav span,.sidecard{display:none}.metrics{grid-template-columns:1fr 1fr}}
+
+.finding.selected{background:#101f2e;border-left:3px solid #4d7cff}.actions button:disabled{opacity:0.5;cursor:not-allowed}.repo button:disabled{opacity:0.6;cursor:not-allowed}.detail p{margin-bottom:8px}
+.secondary { background: #111a28; border: 1px solid #30415a; color: #cdd9e8; }
+.secondary:hover { background: #172235; }
+
+
+================================================================================
+FILE: frontend/vite.config.js
+================================================================================
+
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/health": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
+  },
+});

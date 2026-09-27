@@ -1,0 +1,720 @@
+LUNAR — DEMO-REPO
+================================================================================
+
+
+================================================================================
+FILE: demo-repo/MAINTENANCE_FIXTURES.md
+================================================================================
+
+# Demo Maintenance Fixtures
+
+This file documents intentional issues in the synthetic demo repository. It exists so judges can reproduce the expected maintenance workflow.
+
+- `config.py`: hard-coded credential patterns.
+- `appointments.py`: large/high-complexity function and maintenance markers.
+- `billing.py`: large/high-complexity function and maintenance markers.
+- `patients.py`: weak exception handling, maintenance markers, and documentation gaps.
+- `staff.py`: maintenance marker and insufficient corresponding tests.
+- `notifications.py`: insufficient corresponding tests.
+- `requirements.txt`: dependency-version finding exercised by the scanner.
+
+These are synthetic fixtures, not real hospital or patient data.
+
+
+================================================================================
+FILE: demo-repo/README.md
+================================================================================
+
+# Hospital Management System — LUNAR Demo Repository
+
+> **IMPORTANT: This is a synthetic demonstration repository created for the LUNAR hackathon demo.**
+> All data, credentials, patient IDs, and staff information are completely fictional.
+> No real patient data is used anywhere in this repository.
+
+## Purpose
+
+This repository is deliberately seeded with realistic technical-debt problems so that the LUNAR
+autonomous maintenance platform can demonstrate its full analysis → repair → verify workflow.
+
+## Seeded Issues (for demonstration)
+
+The following maintenance problems have been intentionally introduced:
+
+| # | Category | Severity | Description |
+|---|----------|----------|-------------|
+| 1 | Security | HIGH | Hard-coded fake database password in config |
+| 2 | Security | HIGH | Hard-coded fake API key in notification service |
+| 3 | Complexity | HIGH | `schedule_appointment` function is 80+ lines with 12+ branches |
+| 4 | Complexity | HIGH | `process_billing` function has deeply nested conditional logic |
+| 5 | Duplication | MEDIUM | Patient age validation duplicated across two modules |
+| 6 | Maintainability | MEDIUM | Weak/absent error handling in data access layer |
+| 7 | Testing | HIGH | Core appointment scheduling, notification, and parts of billing/staff logic lack dedicated unit tests |
+| 8 | Documentation | MEDIUM | Missing docstrings on critical public functions |
+| 9 | Maintenance | LOW | TODO/FIXME markers that track real open work |
+| 10 | Dependency | MEDIUM | Pinned to an old, known-issue version of a library |
+
+## Fictional System Overview
+
+A minimal hospital management system with modules for:
+- Patient registration and records
+- Appointment scheduling
+- Staff management
+- Billing and invoices
+- Notification dispatch
+
+## Setup (fictional — for demo display only)
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+## Tests
+
+The demo includes executable tests for patient registration plus a small cross-module smoke suite.
+Coverage is intentionally incomplete so LUNAR can demonstrate test-gap detection.
+
+```bash
+pytest tests/
+```
+
+## Maintenance Notes
+
+See LUNAR analysis for current technical-debt assessment.
+
+
+================================================================================
+FILE: demo-repo/appointments.py
+================================================================================
+
+"""
+Appointment scheduling module.
+DEMO REPOSITORY — all data is fictional.
+"""
+
+import datetime
+from config import MAX_APPOINTMENTS_PER_DAY, APPOINTMENT_SLOT_MINUTES, APPOINTMENT_TYPES
+
+
+def validate_patient_age(age):
+    # SEEDED ISSUE #5b — duplicated validation (same logic as in patients.py)
+    if not isinstance(age, int):
+        return False
+    if age < 0 or age > 150:
+        return False
+    return True
+
+
+def schedule_appointment(
+    patient_id,
+    doctor_id,
+    appointment_date,
+    appointment_type,
+    patient_age,
+    notes=None,
+    priority=None,
+    insurance_id=None,
+    referring_doctor=None,
+):
+    """
+    Schedule a new appointment for a patient.
+
+    SEEDED ISSUE #3 — High complexity function:
+    This function is too long (80+ lines) and has too many branches (12+).
+    It handles scheduling logic, validation, conflict detection, insurance checks,
+    priority queuing, and notification in a single function.
+    """
+    # Input validation block
+    if not patient_id:
+        raise ValueError("patient_id is required")
+    if not doctor_id:
+        raise ValueError("doctor_id is required")
+    if not appointment_date:
+        raise ValueError("appointment_date is required")
+    if appointment_type not in APPOINTMENT_TYPES:
+        raise ValueError(f"Unknown appointment type: {appointment_type}")
+
+    # Validate patient age for appointment type
+    if not validate_patient_age(patient_age):
+        raise ValueError(f"Invalid patient age: {patient_age}")
+
+    # Pediatric appointments need special handling
+    if patient_age < 18:
+        if appointment_type == "specialist_referral" and not referring_doctor:
+            raise ValueError("Pediatric specialist referrals require a referring doctor")
+        if appointment_type == "emergency":
+            priority = "urgent"
+
+    # Date validation
+    if isinstance(appointment_date, str):
+        try:
+            appointment_date = datetime.datetime.fromisoformat(appointment_date)
+        except ValueError:
+            raise ValueError(f"Invalid date format: {appointment_date}")
+
+    if appointment_date < datetime.datetime.now():
+        raise ValueError("Cannot schedule appointments in the past")
+
+    # Check daily limit
+    existing = _get_appointments_for_date(doctor_id, appointment_date.date())
+    if len(existing) >= MAX_APPOINTMENTS_PER_DAY:
+        raise ValueError(f"Doctor {doctor_id} has reached the daily appointment limit")
+
+    # Check for scheduling conflicts
+    for existing_appt in existing:
+        existing_time = existing_appt.get("time")
+        if existing_time:
+            diff = abs((appointment_date - existing_time).total_seconds() / 60)
+            if diff < APPOINTMENT_SLOT_MINUTES:
+                raise ValueError(
+                    f"Scheduling conflict: appointment within {APPOINTMENT_SLOT_MINUTES} minutes of another"
+                )
+
+    # Insurance validation
+    if insurance_id:
+        if not _validate_insurance(insurance_id, appointment_type):
+            if priority == "urgent":
+                # Allow urgent appointments without valid insurance but flag it
+                notes = (notes or "") + " [INSURANCE_UNVERIFIED]"
+            else:
+                raise ValueError(f"Insurance {insurance_id} does not cover {appointment_type}")
+
+    # Set priority based on appointment type if not explicitly set
+    if priority is None:
+        if appointment_type == "emergency":
+            priority = "urgent"
+        elif appointment_type == "follow_up":
+            priority = "normal"
+        elif appointment_type == "specialist_referral":
+            priority = "elevated"
+        else:
+            priority = "normal"
+
+    # Build appointment record
+    appointment = {
+        "patient_id": patient_id,
+        "doctor_id": doctor_id,
+        "datetime": appointment_date.isoformat(),
+        "type": appointment_type,
+        "priority": priority,
+        "notes": notes,
+        "insurance_id": insurance_id,
+        "referring_doctor": referring_doctor,
+        "status": "scheduled",
+    }
+
+    _save_appointment(appointment)
+
+    # Send notifications
+    if priority == "urgent":
+        _notify_urgent(patient_id, doctor_id, appointment_date)
+    else:
+        _notify_standard(patient_id, appointment_date)
+
+    return appointment
+
+
+def cancel_appointment(appointment_id, reason=None):
+    """Cancel a scheduled appointment.
+
+    # TODO: implement cancellation fee logic for late cancellations
+    """
+    appointment = _load_appointment(appointment_id)
+    if appointment is None:
+        raise ValueError(f"Appointment {appointment_id} not found")
+
+    if appointment.get("status") == "cancelled":
+        raise ValueError("Appointment is already cancelled")
+
+    appointment["status"] = "cancelled"
+    appointment["cancellation_reason"] = reason
+    _save_appointment(appointment)
+    return appointment
+
+
+def get_appointments_for_patient(patient_id, include_cancelled=False):
+    """Return all appointments for a patient."""
+    # SEEDED ISSUE #8 — missing docstring content and no parameter type hints
+    all_appts = _load_all_appointments()
+    result = [a for a in all_appts if a["patient_id"] == patient_id]
+    if not include_cancelled:
+        result = [a for a in result if a.get("status") != "cancelled"]
+    return result
+
+
+def _get_appointments_for_date(doctor_id, date):
+    return []  # Stub
+
+
+def _validate_insurance(insurance_id, appointment_type):
+    return True  # Stub
+
+
+def _save_appointment(appointment):
+    pass  # Stub
+
+
+def _load_appointment(appointment_id):
+    return None  # Stub
+
+
+def _load_all_appointments():
+    return []  # Stub
+
+
+def _notify_urgent(patient_id, doctor_id, appointment_date):
+    pass  # Stub
+
+
+def _notify_standard(patient_id, appointment_date):
+    pass  # Stub
+
+
+================================================================================
+FILE: demo-repo/billing.py
+================================================================================
+
+"""
+Billing and invoice module.
+DEMO REPOSITORY — all data is fictional.
+"""
+
+from config import APPOINTMENT_TYPES
+
+
+PROCEDURE_COSTS = {
+    "general_consultation": 150.00,
+    "follow_up": 75.00,
+    "emergency": 500.00,
+    "specialist_referral": 300.00,
+    "lab_results": 50.00,
+}
+
+INSURANCE_DISCOUNT_RATES = {
+    "BASIC": 0.20,
+    "STANDARD": 0.40,
+    "PREMIUM": 0.60,
+}
+
+
+def process_billing(patient_id, appointment_id, appointment_type, insurance_plan=None, discount_code=None):
+    """
+    Process billing for a completed appointment.
+
+    SEEDED ISSUE #4 — Deeply nested conditional logic
+    This function has 4+ levels of nesting and mixes billing logic,
+    discount calculation, insurance processing, and persistence.
+    """
+    if patient_id:
+        if appointment_type in PROCEDURE_COSTS:
+            base_cost = PROCEDURE_COSTS[appointment_type]
+            final_cost = base_cost
+
+            if insurance_plan:
+                if insurance_plan.upper() in INSURANCE_DISCOUNT_RATES:
+                    discount = INSURANCE_DISCOUNT_RATES[insurance_plan.upper()]
+                    final_cost = base_cost * (1 - discount)
+                    if discount_code:
+                        if _validate_discount_code(discount_code):
+                            if discount_code.startswith("VIP"):
+                                final_cost = final_cost * 0.85
+                            elif discount_code.startswith("SENIOR"):
+                                final_cost = final_cost * 0.90
+                            else:
+                                final_cost = final_cost * 0.95
+                else:
+                    # Unknown insurance plan — charge full price
+                    final_cost = base_cost
+            else:
+                if discount_code:
+                    if _validate_discount_code(discount_code):
+                        final_cost = base_cost * 0.95
+
+            invoice = {
+                "patient_id": patient_id,
+                "appointment_id": appointment_id,
+                "appointment_type": appointment_type,
+                "base_cost": base_cost,
+                "final_cost": round(final_cost, 2),
+                "insurance_plan": insurance_plan,
+                "discount_code": discount_code,
+                "status": "pending",
+            }
+
+            # SEEDED ISSUE #6 — weak error handling around DB write
+            _save_invoice(invoice)
+            return invoice
+        else:
+            raise ValueError(f"Unknown appointment type for billing: {appointment_type}")
+    else:
+        raise ValueError("patient_id is required")
+
+
+def get_invoice(invoice_id):
+    # FIXME: add pagination for patients with many invoices
+    return _load_invoice(invoice_id)
+
+
+def _validate_discount_code(code):
+    """Validate a discount code."""
+    if not code:
+        return False
+    # HACK: currently accepts any non-empty string — needs real validation
+    return len(code) > 3
+
+
+def _save_invoice(invoice):
+    pass  # Stub
+
+
+def _load_invoice(invoice_id):
+    return None  # Stub
+
+
+================================================================================
+FILE: demo-repo/config.py
+================================================================================
+
+"""
+Hospital Management System — Configuration
+DEMO REPOSITORY: All values are fictional placeholders.
+"""
+
+# SEEDED ISSUE #1 — Hard-coded credential
+# LUNAR should detect: hard-coded database password
+DB_HOST = "localhost"
+DB_PORT = 5432
+DB_NAME = "hospital_demo_db"
+DB_USER = "hms_admin"
+DB_PASSWORD = "SuperSecret123!"  # TODO: move to environment variable
+
+# SEEDED ISSUE #2 — Hard-coded API key
+# LUNAR should detect: hard-coded API key for notification service
+NOTIFICATION_API_KEY = "api_key_abc12345xyz_DEMO_ONLY"
+NOTIFICATION_SERVICE_URL = "https://notify.example-demo.com/send"
+
+# Application settings
+APP_ENV = "development"
+APP_DEBUG = True
+MAX_APPOINTMENTS_PER_DAY = 50
+APPOINTMENT_SLOT_MINUTES = 30
+
+# Allowed appointment types
+APPOINTMENT_TYPES = [
+    "general_consultation",
+    "follow_up",
+    "emergency",
+    "specialist_referral",
+    "lab_results",
+]
+
+
+================================================================================
+FILE: demo-repo/notifications.py
+================================================================================
+
+"""
+Notification dispatch module.
+DEMO REPOSITORY — all data is fictional.
+"""
+
+import requests
+from config import NOTIFICATION_API_KEY, NOTIFICATION_SERVICE_URL
+
+
+def send_appointment_reminder(patient_email, appointment_details):
+    """Send an appointment reminder to a patient."""
+    payload = {
+        "to": patient_email,
+        "subject": "Appointment Reminder",
+        "body": _build_reminder_body(appointment_details),
+    }
+    headers = {
+        "Authorization": f"Bearer {NOTIFICATION_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    # SEEDED ISSUE #6 — weak error handling: exception from requests not caught
+    response = requests.post(NOTIFICATION_SERVICE_URL, json=payload, headers=headers)
+    return response.status_code == 200
+
+
+def send_cancellation_notice(patient_email, appointment_id, reason=None):
+    """Send a cancellation notice."""
+    payload = {
+        "to": patient_email,
+        "subject": "Appointment Cancelled",
+        "body": f"Your appointment {appointment_id} has been cancelled. Reason: {reason or 'Not specified'}",
+    }
+    headers = {"Authorization": f"Bearer {NOTIFICATION_API_KEY}"}
+    response = requests.post(NOTIFICATION_SERVICE_URL, json=payload, headers=headers)
+    return response.status_code == 200
+
+
+def _build_reminder_body(appointment_details):
+    return (
+        f"Dear Patient,\n\n"
+        f"This is a reminder for your appointment on "
+        f"{appointment_details.get('datetime', 'TBD')} "
+        f"with Doctor {appointment_details.get('doctor_id', 'TBD')}.\n\n"
+        f"Type: {appointment_details.get('type', 'General Consultation')}\n\n"
+        f"Please arrive 10 minutes early. This is a fictional demo message."
+    )
+
+
+================================================================================
+FILE: demo-repo/patients.py
+================================================================================
+
+"""
+Patient registration and records module.
+DEMO REPOSITORY — all data is fictional.
+"""
+
+
+def validate_patient_age(age):
+    # SEEDED ISSUE #5a — duplicated validation (same logic in appointments.py)
+    if not isinstance(age, int):
+        return False
+    if age < 0 or age > 150:
+        return False
+    return True
+
+
+def validate_patient_id(patient_id):
+    """Check that a patient ID matches the required format."""
+    if not patient_id:
+        return False
+    if not isinstance(patient_id, str):
+        return False
+    # Patient IDs must be 8 alphanumeric characters
+    import re
+    return bool(re.match(r"^[A-Z]{2}\d{6}$", patient_id))
+
+
+def register_patient(name, age, patient_id, contact_email, blood_type=None):
+    """Register a new patient in the system.
+
+    Returns a patient record dict or raises ValueError on invalid input.
+    """
+    if not name or not isinstance(name, str):
+        raise ValueError("Patient name is required")
+
+    if not validate_patient_age(age):
+        raise ValueError(f"Invalid age: {age}")
+
+    if not validate_patient_id(patient_id):
+        raise ValueError(f"Invalid patient ID format: {patient_id}")
+
+    record = {
+        "patient_id": patient_id,
+        "name": name,
+        "age": age,
+        "contact_email": contact_email,
+        "blood_type": blood_type,
+        "status": "active",
+    }
+
+    # SEEDED ISSUE #6 — weak error handling: no exception handling around DB write
+    # If the DB is unavailable this will raise an unhandled exception
+    _save_patient_to_db(record)
+    return record
+
+
+def _save_patient_to_db(record):
+    # FIXME: replace with actual database layer
+    # For demo purposes, this is a no-op stub
+    pass
+
+
+def get_patient(patient_id):
+    # SEEDED ISSUE #6 — weak error handling: returns None silently on failure
+    try:
+        return _load_patient_from_db(patient_id)
+    except Exception:
+        return None  # Swallows all errors silently
+
+
+def _load_patient_from_db(patient_id):
+    # Stub — in production this would query the database
+    return {"patient_id": patient_id, "name": "Demo Patient", "status": "active"}
+
+
+def deactivate_patient(patient_id, reason=None):
+    """Mark a patient record as inactive."""
+    # TODO: add audit trail for patient deactivation
+    record = get_patient(patient_id)
+    if record:
+        record["status"] = "inactive"
+        record["deactivation_reason"] = reason
+        _save_patient_to_db(record)
+    return record
+
+
+================================================================================
+FILE: demo-repo/requirements.txt
+================================================================================
+
+fastapi==0.95.2
+uvicorn==0.22.0
+pymongo==4.3.3
+pydantic==1.10.7
+python-dotenv==0.21.0
+requests==2.28.0
+
+
+================================================================================
+FILE: demo-repo/staff.py
+================================================================================
+
+"""
+Staff management module.
+DEMO REPOSITORY — all data is fictional.
+"""
+
+
+STAFF_ROLES = ["doctor", "nurse", "receptionist", "admin", "specialist"]
+
+
+def register_staff(name, role, department, license_number=None):
+    """Register a new staff member."""
+    if not name:
+        raise ValueError("Name is required")
+    if role not in STAFF_ROLES:
+        raise ValueError(f"Invalid role: {role}. Must be one of {STAFF_ROLES}")
+    if role == "doctor" and not license_number:
+        raise ValueError("Medical license number is required for doctors")
+
+    record = {
+        "name": name,
+        "role": role,
+        "department": department,
+        "license_number": license_number,
+        "active": True,
+    }
+    _save_staff(record)
+    return record
+
+
+def get_available_doctors(department=None, date=None):
+    """Return list of available doctors, optionally filtered by department or date."""
+    # TODO: implement schedule-based availability check
+    doctors = _load_all_staff(role="doctor")
+    if department:
+        doctors = [d for d in doctors if d.get("department") == department]
+    return doctors
+
+
+def _save_staff(record):
+    pass  # Stub
+
+
+def _load_all_staff(role=None):
+    return []  # Stub
+
+
+================================================================================
+FILE: demo-repo/tests/test_hospital_core.py
+================================================================================
+
+"""Small executable tests for the synthetic LUNAR hospital demo."""
+from appointments import validate_patient_age
+from billing import process_billing
+from patients import validate_patient_id, register_patient
+from staff import register_staff
+
+
+def test_patient_age_boundaries():
+    assert validate_patient_age(0)
+    assert validate_patient_age(150)
+    assert not validate_patient_age(-1)
+    assert not validate_patient_age(151)
+
+
+def test_patient_id_and_registration():
+    assert validate_patient_id("AB123456")
+    assert not validate_patient_id("bad")
+    record = register_patient("Demo Patient", 30, "AB123456", "demo@example.invalid")
+    assert record["status"] == "active"
+
+
+def test_staff_registration():
+    doctor = register_staff("Demo Doctor", "doctor", "Cardiology", "LIC-DEMO-001")
+    assert doctor["active"] is True
+
+
+def test_billing_with_standard_insurance():
+    invoice = process_billing("AB123456", "APT-DEMO-001", "general_consultation", "STANDARD")
+    assert invoice["final_cost"] == 90.0
+
+
+================================================================================
+FILE: demo-repo/tests/test_patients.py
+================================================================================
+
+"""
+Tests for patient registration module.
+DEMO REPOSITORY — all data is fictional.
+
+Note: SEEDED ISSUE #7 — No tests exist for appointment scheduling,
+billing, or notification modules (the most business-critical paths).
+These tests only cover the patient module.
+"""
+
+import pytest
+from patients import validate_patient_age, validate_patient_id, register_patient
+
+
+class TestValidatePatientAge:
+    def test_valid_adult_age(self):
+        assert validate_patient_age(35) is True
+
+    def test_valid_newborn(self):
+        assert validate_patient_age(0) is True
+
+    def test_valid_elderly(self):
+        assert validate_patient_age(99) is True
+
+    def test_invalid_negative(self):
+        assert validate_patient_age(-1) is False
+
+    def test_invalid_too_old(self):
+        assert validate_patient_age(151) is False
+
+    def test_invalid_string(self):
+        assert validate_patient_age("thirty") is False
+
+
+class TestValidatePatientId:
+    def test_valid_id(self):
+        assert validate_patient_id("AB123456") is True
+
+    def test_invalid_too_short(self):
+        assert validate_patient_id("AB12345") is False
+
+    def test_invalid_lowercase(self):
+        assert validate_patient_id("ab123456") is False
+
+    def test_invalid_empty(self):
+        assert validate_patient_id("") is False
+
+    def test_invalid_none(self):
+        assert validate_patient_id(None) is False
+
+
+class TestRegisterPatient:
+    def test_valid_registration(self):
+        record = register_patient("Jane Demo", 30, "AB123456", "jane@demo.example")
+        assert record["patient_id"] == "AB123456"
+        assert record["status"] == "active"
+
+    def test_missing_name_raises(self):
+        with pytest.raises(ValueError, match="name is required"):
+            register_patient("", 30, "AB123456", "jane@demo.example")
+
+    def test_invalid_age_raises(self):
+        with pytest.raises(ValueError, match="Invalid age"):
+            register_patient("Jane Demo", -5, "AB123456", "jane@demo.example")
+
+    def test_invalid_id_raises(self):
+        with pytest.raises(ValueError, match="Invalid patient ID"):
+            register_patient("Jane Demo", 30, "bad-id", "jane@demo.example")

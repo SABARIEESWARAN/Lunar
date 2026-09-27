@@ -1,0 +1,234 @@
+LUNAR — DOCS
+================================================================================
+
+
+================================================================================
+FILE: docs/ARCHITECTURE.md
+================================================================================
+
+# LUNAR Architecture
+
+## Layers
+
+React UI → FastAPI API → Orchestrator → Repository Workspace → Agents → Verification → MongoDB history.
+
+## Safety boundary
+
+The public repository is read-only during analysis. Repairs happen only in a temporary workspace. Medium/high-risk changes require approval.
+
+## Agent protocol
+
+All agents communicate through structured findings. This makes results auditable and prevents one agent's prose from becoming another agent's implicit truth.
+
+## Parallelism
+
+Code Intelligence, Security/Dependencies, and Tests/Documentation run independently. Debt Analyst waits for all three.
+
+## Verification
+
+A repair is not successful because the model says it worked. Build/test/static/security evidence is required.
+
+
+================================================================================
+FILE: docs/DEMO.md
+================================================================================
+
+# LUNAR Demo Scenario
+
+## Seeded hospital-management repository
+
+Create a small public demo repository with:
+1. hard-coded database credential
+2. high-complexity appointment function
+3. duplicated patient validation
+4. missing tests around appointment cancellation
+5. outdated/deprecated dependency
+6. TODO/FIXME markers
+7. missing README
+8. weak error handling
+
+## Demo flow
+
+1. Paste public GitHub URL.
+2. LUNAR discovers repository stats.
+3. Start analysis.
+4. Show three agents running in parallel.
+5. Show findings and evidence.
+6. Open the critical security finding.
+7. Ask LUNAR chat to prepare a fix.
+8. Show risk and Git-style diff.
+9. Approve the fix.
+10. Run verification.
+11. Show before/after metrics.
+12. Open maintenance history.
+
+## Benchmark
+
+Run the same task manually and with LUNAR at least three times if possible.
+
+Record:
+- time
+- number of manual investigation actions
+- findings detected
+- true positives
+- false positives
+- fix preparation time
+- verification time
+- regression count
+- debt estimate before/after
+- health score before/after
+
+Report actual median values.
+
+
+================================================================================
+FILE: docs/MAINTENANCE_WORKFLOW.md
+================================================================================
+
+# LUNAR Maintenance Workflow
+
+LUNAR turns repository maintenance into an auditable loop:
+
+```text
+SCAN → UNDERSTAND → PRIORITIZE → REPAIR → APPROVE → VERIFY → MEASURE
+```
+
+## 1. Scan
+
+The repository is copied into an isolated workspace. The original public repository is not modified during analysis.
+
+Three deterministic analysis groups inspect the workspace:
+
+- Code Intelligence
+- Security & Dependencies
+- Tests & Documentation
+
+## 2. Understand
+
+Each finding contains structured evidence such as file path, line, category, severity, confidence, recommendation, and estimated effort.
+
+## 3. Prioritize
+
+The Technical Debt Analyst consolidates findings and calculates a LUNAR-specific priority score. High-impact and high-risk findings rise to the top.
+
+## 4. Repair
+
+For supported low-risk transformations, LUNAR prepares a repair in a temporary workspace. The original repository remains untouched.
+
+## 5. Approve
+
+Medium/high-risk changes require explicit developer approval before they are applied.
+
+## 6. Verify
+
+LUNAR runs available tests and static checks and compares repository metrics before and after the change.
+
+## 7. Measure
+
+The result can include:
+
+- findings before/after;
+- estimated maintenance effort before/after;
+- health indicator before/after;
+- test results;
+- regression information;
+- verification checks.
+
+## Developer control
+
+The system recommends and prepares changes. The developer remains the final decision-maker for repairs.
+
+
+================================================================================
+FILE: docs/REPOSITORY_GUIDE.md
+================================================================================
+
+# Repository Guide
+
+## Product code
+
+- `backend/` — FastAPI API, orchestration, scanners, scoring, repair, and verification.
+- `frontend/` — React/Vite dashboard.
+- `bob-prompts/` — structured Bob agent prompts and handoff contracts.
+
+## Demonstration target
+
+- `demo-repo/` — deliberately imperfect synthetic hospital-management repository.
+
+This is not production application code. It is the controlled target used to demonstrate how LUNAR detects and maintains an existing codebase.
+
+## Documentation
+
+- `README.md` — project overview and local setup.
+- `docs/ARCHITECTURE.md` — architecture and safety boundary.
+- `docs/MAINTENANCE_WORKFLOW.md` — end-to-end maintenance lifecycle.
+- `docs/DEMO.md` — demonstration procedure and measurement plan.
+- `docs/SUBMISSION.md` — hackathon submission narrative.
+- `TECHNICAL_DEBT.md` — debt categories, scoring, repair, and verification rules.
+
+## Development checks
+
+Backend:
+
+```bash
+cd backend
+python -m pytest
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
+
+================================================================================
+FILE: docs/SUBMISSION.md
+================================================================================
+
+# LUNAR — Submission Description
+
+## One-line pitch
+
+LUNAR is an autonomous software-maintenance system that detects, prioritizes, repairs, and verifies technical debt across a codebase.
+
+## Problem
+
+Technical debt is rarely a single bug. It accumulates as duplicated logic, complexity, dependency risk, missing tests, documentation gaps, insecure patterns, and deferred maintenance. Developers often discover these issues piecemeal and then spend additional time determining what matters, how risky a change is, and whether a repair introduced a regression.
+
+## Solution
+
+LUNAR turns maintenance into a measurable workflow:
+
+SCAN → UNDERSTAND → PRIORITIZE → REPAIR → APPROVE → VERIFY → MEASURE → REMEMBER
+
+A public GitHub repository is analyzed by parallel specialist agents. Their evidence is consolidated into a technical-debt model. LUNAR prepares fixes in an isolated temporary workspace, shows a developer-facing diff, applies risk-based approval gates, verifies the change, and records before/after metrics.
+
+## IBM Bob 2.0 role
+
+IBM Bob 2.0 is used as the agentic development partner for repository-aware analysis, parallel specialist tasks, repair planning, verification, and document understanding. The project is deliberately structured around subagents and auditable handoffs rather than a single chat completion.
+
+## Differentiator
+
+LUNAR does not stop at finding code problems. It closes the maintenance loop and proves whether a proposed repair improved the codebase without introducing regressions.
+
+## Demo
+
+The demo uses a deliberately seeded hospital-management repository with 5–10 known maintenance problems. The flow shows parallel agents, prioritized findings, an approved repair, verification, and a before/after maintenance report.
+
+## Impact metrics
+
+The prototype measures:
+- time to understand a high-priority issue
+- manual investigation steps
+- findings and false positives
+- repair preparation time
+- verification time
+- regressions
+- health score
+- estimated technical-debt hours
+- test coverage where measurable
+
+All published numbers should be measured during the demo rather than assumed.

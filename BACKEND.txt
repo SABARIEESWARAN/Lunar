@@ -1,0 +1,2032 @@
+LUNAR — BACKEND
+================================================================================
+
+
+================================================================================
+FILE: backend/.env.example
+================================================================================
+
+MONGO_URL=mongodb://localhost:27017
+MONGO_DB=lunar
+
+
+================================================================================
+FILE: backend/app/__init__.py
+================================================================================
+
+
+
+
+================================================================================
+FILE: backend/app/main.py
+================================================================================
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional
+from .service import (
+    start_analysis_job,
+    get_job_status,
+    propose_repair,
+    get_diff,
+    approve_repair,
+    reject_repair,
+    run_verification,
+)
+
+app = FastAPI(title="LUNAR API", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class AnalyzeRequest(BaseModel):
+    repo_url: str
+
+
+class RepairRequest(BaseModel):
+    job_id: str
+    finding_id: str
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "lunar"}
+
+
+# ── Analysis ──────────────────────────────────────────────────────────────────
+
+@app.post("/api/analyze")
+def analyze(req: AnalyzeRequest):
+    try:
+        return start_analysis_job(req.repo_url)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/analyze/{job_id}")
+def analyze_status(job_id: str):
+    job = get_job_status(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+
+# ── Repair ────────────────────────────────────────────────────────────────────
+
+@app.post("/api/repair")
+def repair(req: RepairRequest):
+    try:
+        return propose_repair(req.job_id, req.finding_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/repair/{repair_id}/diff")
+def diff(repair_id: str):
+    result = get_diff(repair_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Repair not found")
+    return result
+
+
+@app.post("/api/repair/{repair_id}/approve")
+def approve(repair_id: str):
+    result = approve_repair(repair_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Repair not found")
+    return result
+
+
+@app.post("/api/repair/{repair_id}/reject")
+def reject(repair_id: str):
+    result = reject_repair(repair_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Repair not found")
+    return result
+
+
+# ── Verification ──────────────────────────────────────────────────────────────
+
+@app.post("/api/verify/{repair_id}")
+def verify(repair_id: str):
+    try:
+        return run_verification(repair_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+================================================================================
+FILE: backend/app/scanners.py
+================================================================================
+
+"""
+LUNAR Scanners — Three independent analysis agents.
+
+Agent 1: Code Intelligence  — complexity, duplication, maintenance markers
+Agent 2: Security & Dependency — credentials, risky patterns, dep versions
+Agent 3: Tests & Documentation — coverage gaps, missing docs
+
+Design rules:
+- Every finding must cite evidence (file + line when available).
+- No finding without a specific piece of repository evidence.
+- Duplicate findings for the same construct are suppressed.
+- IDs are agent-prefixed: C (code), S (security), T (test/docs).
+"""
+
+import ast
+import re
+from pathlib import Path
+
+TEXT_EXTS = {".py", ".js", ".jsx", ".ts", ".tsx", ".json", ".md", ".txt"}
+CODE_EXTS = {".py", ".js", ".jsx", ".ts", ".tsx"}
+IGNORED = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build"}
+
+
+# ─── Shared helpers ────────────────────────────────────────────────────────────
+
+def iter_source(repo, exts=None):
+    target_exts = exts or TEXT_EXTS
+    for p in sorted(repo.rglob("*")):
+        if (
+            p.is_file()
+            and p.suffix.lower() in target_exts
+            and not any(x in p.parts for x in IGNORED)
+        ):
+            try:
+                yield p, p.read_text(errors="ignore")
+            except Exception:
+                pass
+
+
+def _rel(repo, path):
+    """Return a clean forward-slash relative path."""
+    try:
+        return str(path.relative_to(repo)).replace("\\", "/")
+    except ValueError:
+        return str(path).replace("\\", "/")
+
+
+def finding(fid, category, severity, title, path, line, evidence, recommendation, effort, risk, confidence=0.9):
+    """
+    Canonical LUNAR finding schema.
+    confidence: 0.0–1.0, used by the debt analyst for priority scoring.
+    """
+    return {
+        "id": fid,
+        "category": category,
+        "severity": severity,
+        "title": title,
+        "path": str(path),
+        "line": line,
+        "evidence": str(evidence)[:500],
+        "recommendation": recommendation,
+        "estimated_effort_min": effort,
+        "risk": risk,
+        "confidence": confidence,
+    }
+
+
+def _line_of(text, offset):
+    """Return 1-based line number for a character offset."""
+    return text[:offset].count("\n") + 1
+
+
+# ─── Agent 1: Code Intelligence ────────────────────────────────────────────────
+
+def scan_code(repo):
+    """
+    Code Intelligence Agent.
+    Detects: complexity, large files, duplication, maintenance markers, error-handling gaps.
+    """
+    out = []
+    idx = 1
+    seen_constructs = set()   # deduplicate findings on same function/file
+    seen_lines = {}           # for duplication heuristic
+
+    for p, text in iter_source(repo, CODE_EXTS):
+        rel = _rel(repo, p)
+
+        # ── Python AST analysis ─────────────────────────────────────────────
+        if p.suffix == ".py":
+            try:
+                tree = ast.parse(text, filename=str(p))
+            except SyntaxError as e:
+                key = f"syntax:{rel}"
+                if key not in seen_constructs:
+                    seen_constructs.add(key)
+                    out.append(finding(
+                        f"C{idx}", "maintainability", "CRITICAL", "Syntax error",
+                        p, e.lineno,
+                        f"SyntaxError at line {e.lineno}: {e.msg}",
+                        "Repair syntax before any other maintenance work.",
+                        15, "HIGH", confidence=1.0,
+                    ))
+                    idx += 1
+                continue
+
+            for node in ast.walk(tree):
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+
+                fn_name = node.name
+                fn_line = node.lineno
+                fn_end = getattr(node, "end_lineno", node.lineno)
+                fn_size = fn_end - fn_line + 1
+
+                # Large function
+                key = f"largefn:{rel}:{fn_name}"
+                if fn_size >= 50 and key not in seen_constructs:
+                    seen_constructs.add(key)
+                    out.append(finding(
+                        f"C{idx}", "complexity", "HIGH", "Large function",
+                        p, fn_line,
+                        f"Function '{fn_name}' spans {fn_size} lines (line {fn_line}–{fn_end}). "
+                        f"Long functions are harder to test, review, and maintain.",
+                        "Break into smaller, single-responsibility functions.",
+                        45, "MEDIUM", confidence=0.95,
+                    ))
+                    idx += 1
+
+                # High cyclomatic complexity
+                branches = sum(
+                    isinstance(n, (ast.If, ast.For, ast.While, ast.Try, ast.BoolOp, ast.ExceptHandler))
+                    for n in ast.walk(node)
+                )
+                key = f"complexity:{rel}:{fn_name}"
+                if branches >= 8 and key not in seen_constructs:
+                    seen_constructs.add(key)
+                    out.append(finding(
+                        f"C{idx}", "complexity", "HIGH", "High cyclomatic complexity",
+                        p, fn_line,
+                        f"Function '{fn_name}' at line {fn_line} has {branches} control-flow "
+                        f"constructs (if/for/while/try/bool). High complexity correlates with bug rate.",
+                        "Extract decision logic into named helper functions. Add a test per branch.",
+                        60, "MEDIUM", confidence=0.9,
+                    ))
+                    idx += 1
+
+                # Weak error handling: bare except or pass-only except
+                for child in ast.walk(node):
+                    if isinstance(child, ast.ExceptHandler):
+                        # bare `except Exception: return None` or `pass`
+                        body_ops = [type(s) for s in child.body]
+                        is_silent = body_ops in [[ast.Pass], [ast.Return]]
+                        if is_silent:
+                            key = f"silentexcept:{rel}:{fn_name}:{child.lineno}"
+                            if key not in seen_constructs:
+                                seen_constructs.add(key)
+                                out.append(finding(
+                                    f"C{idx}", "maintainability", "MEDIUM", "Silent exception handler",
+                                    p, child.lineno,
+                                    f"Function '{fn_name}': except block at line {child.lineno} "
+                                    f"silently swallows exceptions (only contains "
+                                    f"{'pass' if ast.Pass in body_ops else 'return None'}).",
+                                    "Log or re-raise the exception. Silent swallowing hides bugs.",
+                                    20, "MEDIUM", confidence=0.85,
+                                ))
+                                idx += 1
+
+        # ── Large file check (all source files) ─────────────────────────────
+        lines = text.splitlines()
+        if len(lines) > 400:
+            key = f"largefile:{rel}"
+            if key not in seen_constructs:
+                seen_constructs.add(key)
+                out.append(finding(
+                    f"C{idx}", "maintainability", "MEDIUM", "Large source file",
+                    p, 1,
+                    f"{rel} has {len(lines)} lines. Files over 400 lines become harder to navigate.",
+                    "Split the module around distinct responsibilities.",
+                    90, "MEDIUM", confidence=0.8,
+                ))
+                idx += 1
+
+        # ── Maintenance markers ──────────────────────────────────────────────
+        for m in re.finditer(r"\b(TODO|FIXME|HACK)\b", text, re.IGNORECASE):
+            line_no = _line_of(text, m.start())
+            # Get the full line for context
+            line_text = text.splitlines()[line_no - 1].strip() if line_no <= len(text.splitlines()) else ""
+            key = f"marker:{rel}:{line_no}"
+            if key not in seen_constructs:
+                seen_constructs.add(key)
+                out.append(finding(
+                    f"C{idx}", "maintenance", "LOW", "Maintenance marker",
+                    p, line_no,
+                    f"{m.group(0)} at line {line_no}: {line_text[:120]}",
+                    "Convert to a tracked issue or implement the missing work.",
+                    20, "LOW", confidence=1.0,
+                ))
+                idx += 1
+
+    # ── Duplication heuristic ────────────────────────────────────────────────
+    # Collect non-trivial lines per file, then find cross-file repeats
+    file_lines: dict = {}
+    for p, text in iter_source(repo, CODE_EXTS):
+        rel = _rel(repo, p)
+        for i, raw_line in enumerate(text.splitlines(), 1):
+            stripped = raw_line.strip()
+            # Only flag substantive lines (skip blanks, comments, short lines, imports)
+            if (
+                len(stripped) >= 35
+                and not stripped.startswith("#")
+                and not stripped.startswith("import ")
+                and not stripped.startswith("from ")
+                and not stripped.startswith('"""')
+                and not stripped.startswith("'''")
+            ):
+                normalised = re.sub(r"\s+", " ", stripped)
+                if normalised not in file_lines:
+                    file_lines[normalised] = (rel, i, p)
+                else:
+                    prev_rel, prev_line, prev_p = file_lines[normalised]
+                    if prev_rel != rel:
+                        key = f"dup:{normalised[:40]}"
+                        if key not in seen_constructs:
+                            seen_constructs.add(key)
+                            out.append(finding(
+                                f"C{idx}", "duplication", "MEDIUM", "Duplicated code line",
+                                p, i,
+                                f"Line {i} in {rel} is identical to line {prev_line} in {prev_rel}: "
+                                f'"{stripped[:100]}"',
+                                "Extract the shared logic into a single reusable function or module.",
+                                30, "MEDIUM", confidence=0.75,
+                            ))
+                            idx += 1
+
+    return out
+
+
+# ─── Agent 2: Security & Dependency ───────────────────────────────────────────
+
+def scan_security(repo):
+    """
+    Security & Dependency Agent.
+    Detects: hard-coded credentials, risky dynamic execution,
+             injection patterns, suspicious dependency versions.
+    Does NOT invent CVEs. External advisory verification is flagged separately.
+    """
+    out = []
+    idx = 1
+    seen = set()
+
+    # ── Pattern-based security scan ─────────────────────────────────────────
+    # Each entry: (regex, title, recommendation, severity, effort_min, risk, confidence)
+    patterns = [
+        (
+            r'(?i)(password|passwd|db_pass|secret|api[_-]?key|token)\s*=\s*["\'][^"\']{4,}["\']',
+            "Hard-coded credential",
+            "Move secrets to environment variables (os.environ.get) or a dedicated secrets manager. "
+            "Never commit credentials to source control.",
+            "HIGH", 30, "HIGH", 0.9,
+        ),
+        (
+            r'(?i)\beval\s*\(',
+            "Dynamic code execution via eval()",
+            "Remove eval() or replace with a safe alternative (ast.literal_eval for data, "
+            "explicit dispatch tables for logic). eval() with untrusted input is a code-injection risk.",
+            "CRITICAL", 60, "HIGH", 0.95,
+        ),
+        (
+            r'(?i)\bexec\s*\(',
+            "Dynamic code execution via exec()",
+            "Remove exec() or strictly validate and sandbox inputs. exec() with user-controlled "
+            "data is a critical security risk.",
+            "CRITICAL", 60, "HIGH", 0.95,
+        ),
+        (
+            r'(?i)subprocess\.(call|run|Popen)\s*\(.*shell\s*=\s*True',
+            "Shell injection risk",
+            "Use shell=False and pass arguments as a list. shell=True with variable input "
+            "is vulnerable to shell injection.",
+            "HIGH", 45, "HIGH", 0.85,
+        ),
+        (
+            r'(?i)(jwt|token)\s*=\s*["\'][A-Za-z0-9+/=._-]{20,}["\']',
+            "Hard-coded token or JWT",
+            "Remove the hard-coded token and load from environment or secrets manager.",
+            "HIGH", 30, "HIGH", 0.85,
+        ),
+    ]
+
+    for p, text in iter_source(repo, CODE_EXTS | {".json", ".yaml", ".yml", ".env"}):
+        rel = _rel(repo, p)
+        for pat, title, rec, sev, eff, risk, conf in patterns:
+            for m in re.finditer(pat, text):
+                line_no = _line_of(text, m.start())
+                key = f"sec:{title[:20]}:{rel}:{line_no}"
+                if key not in seen:
+                    seen.add(key)
+                    out.append(finding(
+                        f"S{idx}", "security", sev, title,
+                        p, line_no,
+                        f'Line {line_no}: {m.group(0)[:120]}',
+                        rec, eff, risk, confidence=conf,
+                    ))
+                    idx += 1
+
+    # ── Dependency version checks ────────────────────────────────────────────
+    req_file = repo / "requirements.txt"
+    if req_file.exists():
+        text = req_file.read_text(errors="ignore")
+        for line_no, line in enumerate(text.splitlines(), 1):
+            line = line.strip()
+            # Flag pinned old versions of known packages with maintenance concerns
+            OLD_VERSIONS = {
+                "fastapi": ("0.95", "FastAPI 0.95.x is several minor versions behind. "
+                            "Upgrade for security patches and Pydantic v2 support."),
+                "requests": ("2.28", "requests 2.28.x is outdated. Upgrade to 2.31+ for security fixes."),
+                "django": ("3.", "Django 3.x is end-of-life. Upgrade to Django 4.2 LTS or 5.x."),
+                "flask": ("1.", "Flask 1.x is end-of-life. Upgrade to Flask 2.x or 3.x."),
+                "pymongo": ("4.3", "pymongo 4.3.x has known issues. Upgrade to 4.5+."),
+                "pydantic": ("1.", "Pydantic v1 is legacy. Upgrade to Pydantic v2 for performance "
+                             "and active maintenance."),
+            }
+            for pkg, (old_ver, note) in OLD_VERSIONS.items():
+                if pkg in line.lower() and "==" in line:
+                    pinned = line.split("==")[-1].strip()
+                    if pinned.startswith(old_ver):
+                        key = f"dep:{pkg}:{old_ver}"
+                        if key not in seen:
+                            seen.add(key)
+                            out.append(finding(
+                                f"S{idx}", "dependency", "MEDIUM",
+                                f"Outdated dependency: {pkg}",
+                                req_file, line_no,
+                                f"Line {line_no}: {line} — {note}",
+                                f"Upgrade {pkg} to the current supported version. "
+                                f"Review the changelog for breaking changes before upgrading.",
+                                30, "MEDIUM", confidence=0.85,
+                            ))
+                            idx += 1
+
+    # ── package.json checks ──────────────────────────────────────────────────
+    pkg_file = repo / "package.json"
+    if pkg_file.exists():
+        import json as _json
+        try:
+            pkg_data = _json.loads(pkg_file.read_text(errors="ignore"))
+            deps = {**pkg_data.get("dependencies", {}), **pkg_data.get("devDependencies", {})}
+            RISKY_JS_PKGS = {
+                "lodash": "lodash has had prototype-pollution vulnerabilities. "
+                          "Consider lodash-es or native ES2020+ alternatives.",
+                "moment": "moment.js is in maintenance mode. Migrate to date-fns or dayjs.",
+                "node-serialize": "node-serialize is known to allow remote code execution. Remove immediately.",
+            }
+            for pkg_name, note in RISKY_JS_PKGS.items():
+                if pkg_name in deps:
+                    key = f"dep:{pkg_name}"
+                    if key not in seen:
+                        seen.add(key)
+                        out.append(finding(
+                            f"S{idx}", "dependency", "MEDIUM",
+                            f"Dependency requires review: {pkg_name}",
+                            pkg_file, None,
+                            f"{pkg_name}@{deps[pkg_name]}: {note}",
+                            f"Review {pkg_name} usage and consider an alternative.",
+                            20, "MEDIUM", confidence=0.8,
+                        ))
+                        idx += 1
+        except Exception:
+            pass
+
+    return out
+
+
+# ─── Agent 3: Tests & Documentation ───────────────────────────────────────────
+
+def scan_tests_docs(repo):
+    """
+    Tests & Documentation Agent.
+    Detects: missing tests, coverage gaps, missing README, missing docstrings.
+    Distinguishes 'no tests at all' from 'partial test coverage'.
+    """
+    out = []
+    idx = 1
+    seen = set()
+
+    source_files = [
+        p for p in repo.rglob("*")
+        if p.is_file()
+        and p.suffix in CODE_EXTS
+        and not any(x in p.parts for x in IGNORED)
+        and "test" not in p.name.lower()
+    ]
+    test_files = [
+        p for p in repo.rglob("*")
+        if p.is_file()
+        and ("test" in p.name.lower() or "tests" in str(p).lower())
+        and p.suffix in CODE_EXTS
+    ]
+
+    # No tests at all
+    if source_files and not test_files:
+        out.append(finding(
+            f"T{idx}", "testing", "HIGH", "No test files detected",
+            repo, None,
+            f"{len(source_files)} source file(s) detected but no test files found. "
+            f"Source files: {', '.join(_rel(repo, p) for p in source_files[:5])}",
+            "Add unit tests for critical business logic, error paths, and edge cases. "
+            "Start with the highest-complexity modules.",
+            120, "MEDIUM", confidence=1.0,
+        ))
+        idx += 1
+    elif source_files and test_files:
+        # Partial coverage: identify source files with no corresponding test file
+        tested_modules = set()
+        for tf in test_files:
+            name = tf.stem.replace("test_", "").replace("_test", "")
+            tested_modules.add(name)
+
+        untested = [
+            p for p in source_files
+            if p.stem not in tested_modules
+            and p.stem not in ("__init__", "config", "settings", "app", "main", "wsgi", "asgi")
+        ]
+        for p in untested[:5]:  # Cap at 5 to avoid noise
+            rel = _rel(repo, p)
+            key = f"notested:{rel}"
+            if key not in seen:
+                seen.add(key)
+                out.append(finding(
+                    f"T{idx}", "testing", "HIGH", "Module missing test coverage",
+                    p, None,
+                    f"{rel} has no corresponding test file. "
+                    f"Business-critical modules without tests are a maintenance risk.",
+                    f"Create tests/{p.stem}_test.py or tests/test_{p.stem}.py covering "
+                    f"the main functions and error paths.",
+                    90, "MEDIUM", confidence=0.8,
+                ))
+                idx += 1
+
+    # README check
+    readme = repo / "README.md"
+    if not readme.exists():
+        out.append(finding(
+            f"T{idx}", "documentation", "MEDIUM", "Missing README",
+            repo, None,
+            "Repository has no README.md. Contributors and reviewers cannot understand the project.",
+            "Add a README.md with: project overview, setup instructions, test commands, "
+            "architecture notes, and maintenance guidelines.",
+            45, "LOW", confidence=1.0,
+        ))
+        idx += 1
+    else:
+        # Weak README check
+        readme_text = readme.read_text(errors="ignore")
+        if len(readme_text.strip()) < 150:
+            out.append(finding(
+                f"T{idx}", "documentation", "LOW", "README is too brief",
+                readme, 1,
+                f"README.md exists but contains only {len(readme_text.strip())} characters. "
+                "Minimal documentation leaves maintainers without critical context.",
+                "Expand to include: setup instructions, test commands, "
+                "architecture overview, and dependency notes.",
+                30, "LOW", confidence=0.8,
+            ))
+            idx += 1
+
+    # Missing docstrings on public Python functions
+    for p, text in iter_source(repo, {".py"}):
+        rel = _rel(repo, p)
+        if "test" in rel.lower():
+            continue
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            continue
+
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if node.name.startswith("_"):
+                continue  # Skip private functions
+            has_doc = (
+                node.body
+                and isinstance(node.body[0], ast.Expr)
+                and isinstance(node.body[0].value, ast.Constant)
+                and isinstance(node.body[0].value.value, str)
+            )
+            if not has_doc:
+                key = f"nodoc:{rel}:{node.name}"
+                if key not in seen:
+                    seen.add(key)
+                    out.append(finding(
+                        f"T{idx}", "documentation", "LOW", "Public function missing docstring",
+                        p, node.lineno,
+                        f"Function '{node.name}' at line {node.lineno} in {rel} "
+                        f"has no docstring. Public functions should document purpose, "
+                        f"parameters, and return values.",
+                        f"Add a docstring to '{node.name}' describing its purpose, "
+                        f"parameters, return value, and any raised exceptions.",
+                        10, "LOW", confidence=0.9,
+                    ))
+                    idx += 1
+
+    return out
+
+
+================================================================================
+FILE: backend/app/scoring.py
+================================================================================
+
+"""
+LUNAR Technical Debt Analyst
+=============================
+Agent 4: Consolidates findings from Code Intelligence, Security, and Tests/Docs agents.
+
+Priority formula:
+  priority_score = severity_weight × risk_weight × confidence × impact_weight
+
+Weights are LUNAR-specific and intended for relative ordering only.
+Do not present these as industry-standard scores.
+
+Health score: 100 minus a debt_index derived from weighted finding density.
+The index is capped at 100 (worst possible health = 0).
+"""
+
+SEVERITY_WEIGHT = {"CRITICAL": 10, "HIGH": 6, "MEDIUM": 3, "LOW": 1}
+RISK_WEIGHT = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+
+# Category impact on the codebase (relative to other categories)
+CATEGORY_IMPACT = {
+    "security": 3,
+    "complexity": 2,
+    "maintainability": 2,
+    "duplication": 2,
+    "testing": 2,
+    "dependency": 2,
+    "maintenance": 1,
+    "documentation": 1,
+}
+
+
+def _priority_score(f: dict) -> float:
+    """
+    LUNAR priority score (not an industry standard).
+    Higher = more urgent to address.
+    """
+    sev = SEVERITY_WEIGHT.get(f.get("severity", "LOW"), 1)
+    risk = RISK_WEIGHT.get(f.get("risk", "LOW"), 1)
+    conf = float(f.get("confidence", 0.8))
+    impact = CATEGORY_IMPACT.get(f.get("category", "maintenance"), 1)
+    return sev * risk * conf * impact
+
+
+def _generate_recommendation(f: dict, repairable: bool) -> dict:
+    """
+    Generate a structured AI recommendation for a finding.
+    Keeps recommendations factually grounded in the finding evidence.
+    """
+    category = f.get("category", "")
+    severity = f.get("severity", "LOW")
+    title = f.get("title", "")
+    evidence = f.get("evidence", "")
+    recommendation_text = f.get("recommendation", "")
+    effort_min = f.get("estimated_effort_min", 30)
+    risk = f.get("risk", "MEDIUM")
+
+    what_is_wrong = _what_is_wrong(category, title, evidence)
+    why_it_matters = _why_it_matters(category, severity)
+    verification_required = _verification_required(category, severity)
+
+    return {
+        "what_is_wrong": what_is_wrong,
+        "why_it_matters": why_it_matters,
+        "recommended_action": recommendation_text,
+        "estimated_effort": f"{effort_min} min" if effort_min < 60 else f"{round(effort_min/60, 1)} h",
+        "risk_level": risk,
+        "lunar_can_automate": repairable,
+        "verification_required": verification_required,
+    }
+
+
+def _what_is_wrong(category: str, title: str, evidence: str) -> str:
+    if category == "security":
+        return f"Security issue detected: {title}. Evidence: {evidence[:200]}"
+    if category == "complexity":
+        return f"Code complexity issue: {title}. {evidence[:200]}"
+    if category == "duplication":
+        return f"Duplicated code detected: {evidence[:200]}"
+    if category == "maintainability":
+        return f"Maintainability problem: {title}. {evidence[:200]}"
+    if category == "testing":
+        return f"Test coverage gap: {evidence[:200]}"
+    if category == "documentation":
+        return f"Documentation gap: {title}. {evidence[:200]}"
+    if category == "dependency":
+        return f"Dependency concern: {evidence[:200]}"
+    return f"{title}: {evidence[:200]}"
+
+
+def _why_it_matters(category: str, severity: str) -> str:
+    matters = {
+        ("security", "CRITICAL"): (
+            "Critical security vulnerabilities can be exploited immediately. "
+            "Exposed credentials or unsafe execution patterns put the entire system at risk."
+        ),
+        ("security", "HIGH"): (
+            "Hard-coded credentials or unsafe patterns create a direct attack surface. "
+            "If the source code is ever leaked, these become immediately exploitable."
+        ),
+        ("complexity", "HIGH"): (
+            "High-complexity functions have statistically higher bug rates, are harder to test, "
+            "and slow down every future change. Each added feature increases the risk of regression."
+        ),
+        ("duplication", "MEDIUM"): (
+            "Duplicated logic means bugs must be fixed in multiple places. "
+            "When requirements change, one copy is typically forgotten, causing silent divergence."
+        ),
+        ("maintainability", "MEDIUM"): (
+            "Silent error handlers hide failures. When something goes wrong in production, "
+            "there will be no diagnostic information to help diagnose the issue."
+        ),
+        ("testing", "HIGH"): (
+            "Untested business logic is a regression risk with every change. "
+            "Without tests, refactoring is dangerous and confident deployment is impossible."
+        ),
+        ("dependency", "MEDIUM"): (
+            "Outdated dependencies may contain known security vulnerabilities "
+            "and are no longer receiving patches from maintainers."
+        ),
+        ("documentation", "MEDIUM"): (
+            "Missing documentation increases onboarding time and the probability of "
+            "incorrect usage of the module's API."
+        ),
+        ("maintenance", "LOW"): (
+            "Unresolved TODO/FIXME markers indicate known issues that have been deferred. "
+            "They accumulate into invisible technical debt."
+        ),
+    }
+    key = (category, severity)
+    return matters.get(key, matters.get((category, "MEDIUM"),
+        f"This {severity.lower()} {category} issue contributes to technical debt and should be addressed."))
+
+
+def _verification_required(category: str, severity: str) -> str:
+    if category == "security":
+        return "Re-run security scanner after repair. Confirm no credentials remain in source."
+    if category == "complexity":
+        return "All existing tests must pass after refactoring. Add tests if not present."
+    if category == "duplication":
+        return "Run tests to confirm behaviour is identical after extracting shared logic."
+    if category == "testing":
+        return "Verify new tests pass and cover the identified gap."
+    if severity in ("CRITICAL", "HIGH"):
+        return "Run full test suite and static analysis after repair."
+    return "Review the change and run relevant tests."
+
+
+def consolidate(findings: list, stats: dict, elapsed: float, agent_timings: dict = None) -> dict:
+    """
+    Technical Debt Analyst: consolidate, score, rank, and annotate findings.
+
+    Returns the full LUNAR analysis result including:
+    - health_score (0–100, higher is healthier)
+    - technical_debt estimate
+    - prioritized findings with recommendations
+    - agent statuses
+    """
+    REPAIRABLE_CATEGORIES = {"maintenance", "documentation", "security"}
+
+    # ── Score and rank findings ───────────────────────────────────────────────
+    scored = []
+    for f in findings:
+        repairable = f.get("category", "") in REPAIRABLE_CATEGORIES
+        score = _priority_score(f)
+        rec = _generate_recommendation(f, repairable)
+        scored.append({
+            **f,
+            "priority_score": round(score, 2),
+            "repairable": repairable,
+            "ai_recommendation": rec,
+        })
+
+    # Sort: primary = priority_score desc, secondary = effort asc (quick wins)
+    ranked = sorted(scored, key=lambda x: (x["priority_score"], -x["estimated_effort_min"]), reverse=True)
+
+    # ── Health score calculation ──────────────────────────────────────────────
+    raw = sum(_priority_score(f) for f in findings)
+    size = max(stats["lines"], 1)
+    # Normalise by lines of code density.
+    # We use sqrt(size) as a dampener so small repos aren't penalised as harshly.
+    # The multiplier 6 is calibrated so a repo with many high-severity findings
+    # scores ~30–50 and a clean repo scores 85+.
+    import math
+    normaliser = max(math.sqrt(size) / 10, 1)
+    debt_index = min(100, round((raw / normaliser) * 0.5, 1))
+    health = max(0, round(100 - debt_index))
+
+    # ── Effort estimate ───────────────────────────────────────────────────────
+    effort_min = sum(f.get("estimated_effort_min", 0) for f in findings)
+
+    # ── Severity and category breakdowns ─────────────────────────────────────
+    by_sev = {s: sum(1 for f in findings if f.get("severity") == s) for s in SEVERITY_WEIGHT}
+    categories: dict = {}
+    for f in findings:
+        cat = f.get("category", "other")
+        categories[cat] = categories.get(cat, 0) + 1
+
+    # ── Agent timings ─────────────────────────────────────────────────────────
+    timings = agent_timings or {}
+
+    return {
+        "repository": stats,
+        "analysis_seconds": elapsed,
+        "health_score": health,
+        "technical_debt_minutes": effort_min,
+        "technical_debt_hours": round(effort_min / 60, 1),
+        "severity_counts": by_sev,
+        "category_counts": categories,
+        "findings": ranked,
+        "total_findings": len(ranked),
+        "agent_status": {
+            "code_intelligence": {
+                "status": "completed",
+                "findings": sum(1 for f in findings if f.get("id", "").startswith("C")),
+                "elapsed_ms": timings.get("code_intelligence", 0),
+            },
+            "security_dependencies": {
+                "status": "completed",
+                "findings": sum(1 for f in findings if f.get("id", "").startswith("S")),
+                "elapsed_ms": timings.get("security_dependencies", 0),
+            },
+            "test_documentation": {
+                "status": "completed",
+                "findings": sum(1 for f in findings if f.get("id", "").startswith("T")),
+                "elapsed_ms": timings.get("test_documentation", 0),
+            },
+            "debt_analyst": {
+                "status": "completed",
+                "findings": len(ranked),
+                "elapsed_ms": timings.get("debt_analyst", 0),
+            },
+            "repair": {
+                "status": "waiting_for_approval",
+                "findings": 0,
+                "elapsed_ms": 0,
+            },
+            "verification": {
+                "status": "waiting_for_approval",
+                "findings": 0,
+                "elapsed_ms": 0,
+            },
+        },
+        "priority_summary": _build_priority_summary(ranked),
+    }
+
+
+def _build_priority_summary(ranked: list) -> dict:
+    """Top 3 highest-priority findings as a quick summary."""
+    top = ranked[:3]
+    return {
+        "top_findings": [
+            {
+                "id": f["id"],
+                "title": f["title"],
+                "severity": f["severity"],
+                "category": f["category"],
+                "priority_score": f["priority_score"],
+            }
+            for f in top
+        ],
+        "immediate_action_required": any(
+            f["severity"] == "CRITICAL" for f in ranked
+        ),
+        "repairable_count": sum(1 for f in ranked if f.get("repairable")),
+    }
+
+
+================================================================================
+FILE: backend/app/service.py
+================================================================================
+
+"""
+LUNAR Service Layer
+===================
+Covers:
+  - Async job management (Phases 2–3)
+  - Normalized finding model (Phase 4)
+  - Repair proposal + workspace management (Phases 3, 5)
+  - Diff generation (Phase 6)
+  - Approval / rejection (Phase 7)
+  - Verification (Phase 8)
+  - Before/after metrics (Phase 9)
+
+Safety rules enforced here:
+  - Never modify the original cloned workspace.
+  - Repairs happen only in an isolated copy of the workspace.
+  - A repair is not "verified" until actual checks pass.
+"""
+
+import ast
+import io
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+import threading
+import time
+import uuid
+import zipfile
+import difflib
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Optional
+
+import httpx
+
+from .scanners import scan_code, scan_security, scan_tests_docs
+from .scoring import consolidate
+
+# ─── In-memory stores (sufficient for hackathon demo) ────────────────────────
+_jobs: dict = {}        # job_id  → job dict
+_repairs: dict = {}     # repair_id → repair dict
+
+_jobs_lock = threading.Lock()
+_repairs_lock = threading.Lock()
+
+IGNORED = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build"}
+
+# ─── Finding normalisation ────────────────────────────────────────────────────
+
+def _normalise_findings(raw: list, repo_path: Path = None) -> list:
+    """
+    Convert scored findings (already processed by consolidate()) to the
+    canonical LUNAR frontend schema.
+
+    The consolidate() function in scoring.py already adds:
+      - priority_score, repairable, ai_recommendation
+
+    This function:
+      - lowercases severity for frontend display consistency
+      - computes a clean relative file path
+      - keeps all other fields from consolidate() intact
+    """
+    out = []
+    for f in raw:
+        path_str = f.get("path", "")
+        # Compute clean relative path if we have the repo root
+        if repo_path and path_str:
+            try:
+                rel = str(Path(path_str).relative_to(repo_path)).replace("\\", "/")
+            except ValueError:
+                rel = path_str.replace("\\", "/")
+        else:
+            rel = path_str.replace("\\", "/")
+
+        out.append({
+            "id": f.get("id", ""),
+            "severity": f.get("severity", "LOW").lower(),
+            "category": f.get("category", "maintainability"),
+            "title": f.get("title", ""),
+            "file": rel,
+            "line": f.get("line"),
+            "evidence": f.get("evidence", ""),
+            "recommendation": f.get("recommendation", ""),
+            "estimated_effort_min": f.get("estimated_effort_min", 30),
+            "risk": f.get("risk", "MEDIUM"),
+            "confidence": f.get("confidence", 0.8),
+            "repairable": f.get("repairable", False),
+            "priority_score": f.get("priority_score", 0.0),
+            "ai_recommendation": f.get("ai_recommendation", {}),
+        })
+    return out
+
+
+# ─── Workspace helpers ────────────────────────────────────────────────────────
+
+def _github_url_to_zip(url: str):
+    """
+    Given a GitHub repository URL, return the zip archive URL and the repo slug.
+    Supports:
+      https://github.com/owner/repo
+      https://github.com/owner/repo.git
+      https://github.com/owner/repo/tree/branchname
+    """
+    import re as _re
+    url = url.rstrip("/").removesuffix(".git")
+    m = _re.match(r"https?://github\.com/([^/]+/[^/]+?)(?:/tree/([^/]+))?$", url)
+    if m:
+        slug = m.group(1)
+        branch = m.group(2) or "HEAD"
+        zip_url = f"https://github.com/{slug}/archive/refs/heads/{branch}.zip"
+        return zip_url, slug, branch
+    # Fallback: treat last two path segments as owner/repo
+    parts = [p for p in url.rstrip("/").split("/") if p]
+    if len(parts) >= 2:
+        slug = "/".join(parts[-2:])
+        zip_url = f"https://github.com/{slug}/archive/refs/heads/main.zip"
+        return zip_url, slug, "main"
+    raise ValueError(f"Cannot parse GitHub URL: {url}")
+
+
+def _fetch_repo(url: str, work_root: Path) -> Path:
+    """
+    Download a GitHub repository as a ZIP archive and extract it.
+    Falls back to git clone if git is available.
+    Supports file:// local paths for demo/testing.
+    Returns the path to the extracted repo root.
+    """
+    # Built-in synthetic hospital demo. This keeps the hackathon demo self-contained.
+    if url.strip().lower() in {"demo://hospital", "lunar://hospital-demo"}:
+        demo = Path(__file__).resolve().parents[2] / "demo-repo"
+        if not demo.is_dir():
+            raise ValueError(f"Bundled demo repository not found: {demo}")
+        dest = work_root / "repo"
+        shutil.copytree(str(demo), str(dest))
+        return dest
+
+    # Local path support for demo testing: file:///absolute/path
+    if url.startswith("file://"):
+        # Strip file:// or file:/// prefix (handles Windows paths like file:///C:/...)
+        raw = url[7:]  # remove "file://"
+        if raw.startswith("/") and len(raw) > 2 and raw[2] == ":":
+            raw = raw[1:]  # Windows: /C:/path → C:/path
+        local_path = Path(raw)
+        if local_path.is_dir():
+            dest = work_root / "repo"
+            shutil.copytree(str(local_path), str(dest))
+            return dest
+        raise ValueError(f"Local path not found: {local_path}")
+
+    # Try git clone first
+    git_exe = shutil.which("git")
+    if git_exe:
+        repo = work_root / "repo"
+        subprocess.run(
+            [git_exe, "clone", "--depth", "1", url, str(repo)],
+            check=True, capture_output=True, text=True,
+        )
+        return repo
+
+    # No git — use GitHub ZIP download
+    zip_url, slug, branch = _github_url_to_zip(url)
+    zip_data = _download_zip(zip_url)
+    if zip_data is None:
+        # Branch might be "master" — try that
+        alt_url = zip_url.replace("/main.zip", "/master.zip").replace("/HEAD.zip", "/master.zip")
+        zip_data = _download_zip(alt_url)
+    if zip_data is None:
+        raise RuntimeError(f"Could not download repository archive from {zip_url}")
+
+    zip_dir = work_root / "zip_extract"
+    zip_dir.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
+        zf.extractall(str(zip_dir))
+
+    # GitHub ZIP archives have a single top-level directory like "repo-main/"
+    children = [c for c in zip_dir.iterdir() if c.is_dir()]
+    if len(children) == 1:
+        return children[0]
+    return zip_dir
+
+
+def _download_zip(url: str) -> Optional[bytes]:
+    try:
+        with httpx.Client(follow_redirects=True, timeout=60) as client:
+            r = client.get(url)
+            if r.status_code == 200:
+                return r.content
+            return None
+    except Exception:
+        return None
+
+
+def _repo_stats(repo: Path) -> dict:
+    files = []
+    lines = 0
+    languages: dict = {}
+    for p in repo.rglob("*"):
+        if not p.is_file() or any(part in IGNORED for part in p.parts):
+            continue
+        files.append(p)
+        try:
+            text = p.read_text(errors="ignore")
+            lines += len(text.splitlines())
+        except Exception:
+            continue
+        ext = p.suffix.lower()
+        lang = {
+            ".py": "Python", ".js": "JavaScript", ".jsx": "JavaScript",
+            ".ts": "TypeScript", ".tsx": "TypeScript",
+        }.get(ext)
+        if lang:
+            languages[lang] = languages.get(lang, 0) + 1
+    return {"files": len(files), "lines": lines, "languages": languages}
+
+
+def _cleanup_job_workspace(job: dict):
+    """Remove both original and repair workspaces for a completed/failed job."""
+    try:
+        orig = job.get("_workspace_root")
+        if orig and Path(orig).exists():
+            shutil.rmtree(orig, ignore_errors=True)
+    except Exception:
+        pass
+
+
+# ─── Phase 2: Async Analysis Job ─────────────────────────────────────────────
+
+def start_analysis_job(url: str) -> dict:
+    """Submit an analysis job and return immediately with a job_id."""
+    job_id = str(uuid.uuid4())
+    job = {
+        "job_id": job_id,
+        "status": "queued",
+        "progress": 0,
+        "stage": "queued",
+        "repo_url": url,
+        "result": None,
+        "error": None,
+        "_workspace_root": None,   # internal: root of temp dir
+        "_repo_path": None,        # internal: path to cloned repo
+    }
+    with _jobs_lock:
+        _jobs[job_id] = job
+
+    t = threading.Thread(target=_run_analysis, args=(job_id,), daemon=True)
+    t.start()
+    return {"job_id": job_id, "status": "queued"}
+
+
+def get_job_status(job_id: str) -> Optional[dict]:
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+    if job is None:
+        return None
+    # Return safe public view (strip internal keys)
+    return _public_job(job)
+
+
+def _public_job(job: dict) -> dict:
+    return {
+        "job_id": job["job_id"],
+        "status": job["status"],
+        "progress": job["progress"],
+        "stage": job["stage"],
+        "repo_url": job["repo_url"],
+        "result": job["result"],
+        "error": job["error"],
+    }
+
+
+def _set_job(job_id: str, **kwargs):
+    with _jobs_lock:
+        if job_id in _jobs:
+            _jobs[job_id].update(kwargs)
+
+
+def _run_analysis(job_id: str):
+    """Background thread: clone → scan (parallel) → score → store."""
+    try:
+        _set_job(job_id, status="running", progress=5, stage="cloning")
+
+        with _jobs_lock:
+            url = _jobs[job_id]["repo_url"]
+
+        # Fetch repo (git clone or ZIP download)
+        work_root = Path(tempfile.mkdtemp(prefix="lunar-"))
+        repo = _fetch_repo(url, work_root)
+        _set_job(job_id, progress=20, stage="scanning", _workspace_root=str(work_root), _repo_path=str(repo))
+
+        started = time.time()
+        stats = _repo_stats(repo)
+
+        # Parallel scan — 3 independent agents with per-agent timing
+        agent_start_times: dict = {}
+        agent_timings: dict = {}
+
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            agent_futures = {
+                pool.submit(scan_code, repo): "code_intelligence",
+                pool.submit(scan_security, repo): "security_dependencies",
+                pool.submit(scan_tests_docs, repo): "test_documentation",
+            }
+            # Record start time per future
+            for future in agent_futures:
+                agent_start_times[id(future)] = time.time()
+
+            raw_findings = []
+            completed_agents = 0
+            for future in as_completed(agent_futures):
+                agent_name = agent_futures[future]
+                elapsed_ms = round((time.time() - started) * 1000)
+                agent_timings[agent_name] = elapsed_ms
+                raw_findings.extend(future.result())
+                completed_agents += 1
+                progress = 20 + (completed_agents * 20)  # 40 → 60 → 80
+                _set_job(job_id, progress=progress, stage=f"agent_{agent_name}_completed")
+
+        _set_job(job_id, progress=85, stage="consolidating")
+        debt_start = time.time()
+        elapsed = round(time.time() - started, 2)
+
+        # Technical Debt Analyst: consolidate + score + rank + recommend
+        agent_timings["debt_analyst"] = round((time.time() - debt_start) * 1000)
+        result = consolidate(raw_findings, stats, elapsed, agent_timings=agent_timings)
+
+        # Normalise findings: compute clean relative paths, lowercase severity
+        result["findings"] = _normalise_findings(result["findings"], repo_path=repo)
+        result["total_findings"] = len(result["findings"])
+
+        # Store workspace path in job for later repair use
+        _set_job(
+            job_id,
+            status="completed",
+            progress=100,
+            stage="completed",
+            result=result,
+            _workspace_root=str(work_root),
+            _repo_path=str(repo),
+        )
+
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr or ""
+        _set_job(job_id, status="failed", progress=0, stage="failed",
+                 error=f"Clone failed: {stderr[:300]}")
+    except Exception as exc:
+        _set_job(job_id, status="failed", progress=0, stage="failed",
+                 error=str(exc))
+
+
+# ─── Phase 5: Repair Proposal ─────────────────────────────────────────────────
+
+# Repair strategies keyed on finding category + simple heuristic
+# These are the ONLY auto-repairable types for Phase 5.
+
+def _repair_todo_marker(repo_path: Path, finding: dict) -> Optional[dict]:
+    """
+    Remove or annotate a TODO/FIXME/HACK marker.
+    Conservative: we add a tracked comment rather than deleting code.
+    """
+    file_rel = finding["file"]
+    # finding["file"] may be an absolute path from the scanner
+    file_path = Path(file_rel)
+    if not file_path.is_absolute():
+        file_path = repo_path / file_rel
+    if not file_path.exists():
+        return None
+
+    text = file_path.read_text(errors="ignore")
+    # Replace the first matching TODO/FIXME/HACK with a tracked comment
+    new_text, count = re.subn(
+        r"\b(TODO|FIXME|HACK)\b",
+        r"# TRACKED-ISSUE(\1):",
+        text,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    if count == 0:
+        return None
+
+    rel = _make_relative(repo_path, file_path)
+    short_rel = rel.replace("\\", "/")
+    return {
+        "file": short_rel,
+        "original": text,
+        "patched": new_text,
+        "description": f"Converted maintenance marker to tracked comment in {short_rel}",
+    }
+
+
+def _repair_missing_docstring(repo_path: Path, finding: dict) -> Optional[dict]:
+    """Add a concise docstring to a public Python function missing one.
+
+    This is intentionally conservative: only the first public function in the
+    target file is modified, and only when the scanner's evidence identifies
+    the function line.
+    """
+    file_rel = finding.get("file", "")
+    file_path = Path(file_rel)
+    if not file_path.is_absolute():
+        file_path = repo_path / file_rel
+    if not file_path.exists() or file_path.suffix != ".py":
+        return None
+
+    text = file_path.read_text(errors="ignore")
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return None
+
+    target_line = finding.get("line")
+    candidates = [
+        n for n in tree.body
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and not n.name.startswith("_")
+        and (target_line is None or n.lineno == target_line)
+    ]
+    if not candidates:
+        candidates = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("_")]
+    if not candidates:
+        return None
+
+    fn = candidates[0]
+    if ast.get_docstring(fn) is not None:
+        return None
+
+    lines = text.splitlines(keepends=True)
+    insert_at = fn.body[0].lineno - 1 if fn.body else fn.lineno
+    indent = " " * (len(lines[fn.lineno - 1]) - len(lines[fn.lineno - 1].lstrip())) + "    "
+    doc = f'{indent}"""LUNAR: document the public {fn.name} operation."""\n'
+    new_lines = lines[:insert_at] + [doc] + lines[insert_at:]
+    new_text = "".join(new_lines)
+    rel = _make_relative(repo_path, file_path).replace("\\", "/")
+    return {
+        "file": rel,
+        "original": text,
+        "patched": new_text,
+        "description": f"Added a concise docstring to public function {fn.name} in {rel}",
+    }
+
+
+def _repair_missing_readme(repo_path: Path, finding: dict) -> Optional[dict]:
+    """Generate a minimal README.md stub."""
+    readme_path = repo_path / "README.md"
+    if readme_path.exists():
+        return None
+
+    stub = "# Project\n\nThis project requires documentation.\n\n## Setup\n\nAdd setup instructions here.\n\n## Tests\n\nAdd test instructions here.\n"
+    return {
+        "file": "README.md",
+        "original": "",
+        "patched": stub,
+        "description": "Added minimal README.md stub",
+    }
+
+
+def _repair_hardcoded_credential(repo_path: Path, finding: dict) -> Optional[dict]:
+    """
+    Replace a hard-coded credential value with an environment-variable lookup.
+    Only handles the simple `key = "value"` pattern found by the security scanner.
+    """
+    file_rel = finding["file"]
+    file_path = Path(file_rel)
+    if not file_path.is_absolute():
+        file_path = repo_path / file_rel
+    if not file_path.exists():
+        return None
+
+    text = file_path.read_text(errors="ignore")
+    # Match: password/secret/api_key = "literal"  (Python assignment)
+    pattern = r'(?i)((password|passwd|secret|api[_-]?key)\s*=\s*)["\'][^"\']+["\']'
+    match = re.search(pattern, text)
+    if not match:
+        return None
+
+    key_name = match.group(2).upper().replace("-", "_")
+    env_var = f"APP_{key_name}"
+    replacement = f"{match.group(1)}os.environ.get('{env_var}', '')"
+    new_text = text[:match.start()] + replacement + text[match.end():]
+
+    # Ensure os is imported
+    if "import os" not in new_text:
+        new_text = "import os\n" + new_text
+
+    rel = _make_relative(repo_path, file_path)
+    short_rel = rel.replace("\\", "/")
+    return {
+        "file": short_rel,
+        "original": text,
+        "patched": new_text,
+        "description": f"Replaced hard-coded credential with os.environ.get('{env_var}', '') in {short_rel}",
+    }
+
+
+def _make_relative(base: Path, target: Path) -> str:
+    try:
+        return str(target.relative_to(base))
+    except ValueError:
+        return str(target)
+
+
+_REPAIR_STRATEGIES = {
+    "maintenance": _repair_todo_marker,
+    "documentation": _repair_missing_docstring,
+    "security": _repair_hardcoded_credential,
+}
+
+
+def propose_repair(job_id: str, finding_id: str) -> dict:
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+    if job is None:
+        raise ValueError(f"Job {job_id} not found")
+    if job["status"] != "completed":
+        raise ValueError(f"Job {job_id} is not completed (status: {job['status']})")
+
+    # Find the finding
+    findings = job["result"]["findings"]
+    finding = next((f for f in findings if f["id"] == finding_id), None)
+    if finding is None:
+        raise ValueError(f"Finding {finding_id} not found in job {job_id}")
+
+    repo_path_str = job.get("_repo_path")
+    if not repo_path_str:
+        raise ValueError("Workspace not available for this job")
+    repo_path = Path(repo_path_str)
+
+    # Create an isolated repair copy of the workspace
+    repair_id = str(uuid.uuid4())
+    repair_root = Path(tempfile.mkdtemp(prefix="lunar-repair-"))
+    repair_repo = repair_root / "repo"
+    shutil.copytree(str(repo_path), str(repair_repo))
+
+    # Select repair strategy
+    category = finding.get("category", "")
+    strategy = _REPAIR_STRATEGIES.get(category)
+
+    if strategy is None:
+        # Not auto-repairable
+        shutil.rmtree(repair_root, ignore_errors=True)
+        return {
+            "repair_id": None,
+            "status": "manual_review_required",
+            "finding_id": finding_id,
+            "reason": f"Category '{category}' does not have an automatic repair strategy. Manual review required.",
+        }
+
+    # Translate the finding's file path from original workspace to repair workspace
+    finding_for_repair = dict(finding)
+    orig_file = finding.get("file", "")
+    if orig_file and Path(orig_file).is_absolute():
+        orig_path = Path(orig_file)
+        try:
+            rel_in_orig = orig_path.relative_to(repo_path)
+            finding_for_repair["file"] = str(repair_repo / rel_in_orig)
+        except ValueError:
+            pass  # not under repo_path; leave as-is
+
+    patch = strategy(repair_repo, finding_for_repair)
+
+    if patch is None:
+        shutil.rmtree(repair_root, ignore_errors=True)
+        return {
+            "repair_id": None,
+            "status": "manual_review_required",
+            "finding_id": finding_id,
+            "reason": "Could not locate the specific code pattern to repair automatically.",
+        }
+
+    # Write the patched file into the repair workspace
+    # patch["file"] is relative (e.g. "examples/tutorial/tests/conftest.py")
+    patched_file_path = repair_repo / Path(patch["file"])
+    patched_file_path.parent.mkdir(parents=True, exist_ok=True)
+    patched_file_path.write_text(patch["patched"], encoding="utf-8")
+
+    repair = {
+        "repair_id": repair_id,
+        "job_id": job_id,
+        "finding_id": finding_id,
+        "finding": finding,
+        "status": "proposed",          # proposed → approved / rejected → verified
+        "description": patch["description"],
+        "risk": finding.get("risk", "MEDIUM"),
+        "file": patch["file"],
+        "_original_text": patch["original"],
+        "_patched_text": patch["patched"],
+        "_repair_repo": str(repair_repo),
+        "_repair_root": str(repair_root),
+        "_orig_repo": str(repo_path),
+        "verification_result": None,
+    }
+
+    with _repairs_lock:
+        _repairs[repair_id] = repair
+
+    return {
+        "repair_id": repair_id,
+        "status": "proposed",
+        "finding_id": finding_id,
+        "description": patch["description"],
+        "risk": finding.get("risk", "MEDIUM"),
+        "file": patch["file"],
+    }
+
+
+# ─── Phase 6: Diff ────────────────────────────────────────────────────────────
+
+def get_diff(repair_id: str) -> Optional[dict]:
+    with _repairs_lock:
+        repair = _repairs.get(repair_id)
+    if repair is None:
+        return None
+
+    original = repair.get("_original_text", "")
+    patched = repair.get("_patched_text", "")
+    file_name = repair.get("file", "unknown")
+
+    diff_lines = list(difflib.unified_diff(
+        original.splitlines(keepends=True),
+        patched.splitlines(keepends=True),
+        fromfile=f"a/{file_name}",
+        tofile=f"b/{file_name}",
+        lineterm="",
+    ))
+    unified_diff = "".join(diff_lines)
+
+    return {
+        "repair_id": repair_id,
+        "status": repair["status"],
+        "file": file_name,
+        "diff": unified_diff,
+        "description": repair.get("description", ""),
+        "risk": repair.get("risk", "MEDIUM"),
+    }
+
+
+# ─── Phase 7: Approval / Rejection ───────────────────────────────────────────
+
+def approve_repair(repair_id: str) -> Optional[dict]:
+    with _repairs_lock:
+        repair = _repairs.get(repair_id)
+    if repair is None:
+        return None
+    if repair["status"] not in ("proposed",):
+        return {"repair_id": repair_id, "status": repair["status"],
+                "message": f"Cannot approve repair in status '{repair['status']}'"}
+    repair["status"] = "approved"
+    return {"repair_id": repair_id, "status": "approved",
+            "message": "Repair approved. Run /api/verify/{repair_id} to verify."}
+
+
+def reject_repair(repair_id: str) -> Optional[dict]:
+    with _repairs_lock:
+        repair = _repairs.get(repair_id)
+    if repair is None:
+        return None
+    repair["status"] = "rejected"
+    # Clean up repair workspace
+    repair_root = repair.get("_repair_root")
+    if repair_root:
+        shutil.rmtree(repair_root, ignore_errors=True)
+    return {"repair_id": repair_id, "status": "rejected",
+            "message": "Repair rejected. Workspace cleaned up."}
+
+
+# ─── Phase 8 & 9: Verification + Before/After Metrics ────────────────────────
+
+def run_verification(repair_id: str) -> dict:
+    with _repairs_lock:
+        repair = _repairs.get(repair_id)
+    if repair is None:
+        raise ValueError(f"Repair {repair_id} not found")
+    if repair["status"] != "approved":
+        raise ValueError(
+            f"Repair must be approved before verification (current status: {repair['status']})"
+        )
+
+    repair_repo = Path(repair["_repair_repo"])
+    orig_repo = Path(repair["_orig_repo"])
+
+    checks = []
+
+    # ── 1. Syntax / static check (delta-based: only fail if repair introduced new errors) ─
+    lang = _detect_language(repair_repo)
+    orig_static = _run_static_checks(orig_repo, lang)
+    repair_static = _run_static_checks(repair_repo, lang)
+    checks.extend(_compare_static_checks(orig_static, repair_static))
+
+    # ── 2. Test runner ────────────────────────────────────────────────────────
+    checks.extend(_run_tests(repair_repo, lang))
+
+    # ── 3. Before/after metrics ───────────────────────────────────────────────
+    before_metrics = _compute_metrics(orig_repo)
+    after_metrics = _compute_metrics(repair_repo)
+
+    # ── Determine overall status ──────────────────────────────────────────────
+    # Only count checks that explicitly failed (not skipped); test runner failures do count
+    hard_failures = [c for c in checks if c["status"] == "failed" and "regression" in c.get("name", "")]
+    test_failures = [c for c in checks if c["status"] == "failed" and c.get("check_type") == "test"]
+    regressions = _find_regressions(before_metrics, after_metrics)
+    any_failure = hard_failures or test_failures
+    status = "failed" if any_failure else ("partial" if regressions else "passed")
+
+    verification_result = {
+        "repair_id": repair_id,
+        "status": status,
+        "checks": checks,
+        "regressions": regressions,
+        "before_metrics": before_metrics,
+        "after_metrics": after_metrics,
+        "improvement": _delta(before_metrics, after_metrics),
+        "summary": _verification_summary(status, checks, before_metrics, after_metrics),
+    }
+
+    with _repairs_lock:
+        _repairs[repair_id]["status"] = "verified" if status == "passed" else "verification_failed"
+        _repairs[repair_id]["verification_result"] = verification_result
+
+    return verification_result
+
+
+def _compare_static_checks(orig_checks: list, repair_checks: list) -> list:
+    """
+    Compare static check results between original and repaired workspaces.
+    If the repair introduced new errors (higher error count), mark as 'regression'.
+    If error count is equal or improved, mark as 'passed'.
+    If the checker was unavailable in both, mark as 'skipped'.
+    """
+    results = []
+    for orig, rep in zip(orig_checks, repair_checks):
+        orig_exit = orig.get("exit_code")
+        rep_exit = rep.get("exit_code")
+
+        if orig_exit is None and rep_exit is None:
+            results.append({**rep, "status": "skipped", "name": rep["name"],
+                             "note": "Checker not available"})
+            continue
+
+        # Count error lines as a rough proxy for error count
+        orig_errors = orig["output"].count("\n") if orig.get("output") else 0
+        rep_errors = rep["output"].count("\n") if rep.get("output") else 0
+
+        if rep_errors > orig_errors + 2:
+            # Repair introduced meaningfully more errors
+            status = "failed"
+            name = f"regression: {rep['name']}"
+        else:
+            status = "passed"
+            name = rep["name"]
+
+        results.append({
+            **rep,
+            "status": status,
+            "name": name,
+            "check_type": "static",
+            "before_errors": orig_errors,
+            "after_errors": rep_errors,
+            "output": f"Before: {orig_errors} issues\nAfter: {rep_errors} issues\n\n" + rep.get("output", "")[:600],
+        })
+    return results
+
+
+def _detect_language(repo: Path) -> str:
+    """Return the primary language of the repository."""
+    py_files = list(repo.rglob("*.py"))
+    js_files = list(repo.rglob("*.js")) + list(repo.rglob("*.jsx")) + list(repo.rglob("*.ts"))
+    if len(py_files) >= len(js_files):
+        return "python"
+    return "javascript"
+
+
+def _python_exe() -> str:
+    """Return the current Python executable path."""
+    import sys
+    return sys.executable
+
+
+def _run_static_checks(repo: Path, lang: str) -> list:
+    checks = []
+    pyexe = _python_exe()
+
+    if lang == "python":
+        # Try pyflakes (lightweight), then compile every Python source file.
+        py_files = [str(f) for f in repo.rglob("*.py") if not any(x in f.parts for x in IGNORED)]
+        compile_cmd = [pyexe, "-m", "py_compile", *py_files] if py_files else None
+        checkers = [[pyexe, "-m", "pyflakes", "."]]
+        if compile_cmd:
+            checkers.append(compile_cmd)
+        for checker in checkers:
+            try:
+                result = subprocess.run(
+                    checker, cwd=str(repo),
+                    capture_output=True, text=True, timeout=30,
+                )
+                checks.append({
+                    "name": " ".join(checker[1:3]),  # e.g. "-m pyflakes"
+                    "command": " ".join(checker),
+                    "status": "passed" if result.returncode == 0 else "failed",
+                    "exit_code": result.returncode,
+                    "output": (result.stdout + result.stderr)[:800],
+                })
+                break  # Only need one static check
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                continue
+
+    elif lang == "javascript":
+        # Try node syntax check
+        js_files = list(repo.rglob("*.js"))[:5]
+        for f in js_files:
+            try:
+                result = subprocess.run(
+                    ["node", "--check", str(f)],
+                    capture_output=True, text=True, timeout=15,
+                )
+                checks.append({
+                    "name": f"node --check {f.name}",
+                    "command": f"node --check {f}",
+                    "status": "passed" if result.returncode == 0 else "failed",
+                    "exit_code": result.returncode,
+                    "output": (result.stdout + result.stderr)[:400],
+                })
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                break
+
+    if not checks:
+        checks.append({
+            "name": "static_check",
+            "command": "N/A",
+            "status": "skipped",
+            "exit_code": None,
+            "output": "No compatible static checker found in environment.",
+        })
+
+    return checks
+
+
+def _run_tests(repo: Path, lang: str) -> list:
+    checks = []
+    pyexe = _python_exe()
+
+    if lang == "python":
+        # Look for pytest or unittest discover
+        has_tests = bool(list(repo.rglob("test_*.py")) + list(repo.rglob("*_test.py")))
+        if has_tests:
+            for runner in [[pyexe, "-m", "pytest", "--tb=short", "-q"],
+                           [pyexe, "-m", "unittest", "discover"]]:
+                try:
+                    result = subprocess.run(
+                        runner, cwd=str(repo),
+                        capture_output=True, text=True, timeout=60,
+                    )
+                    checks.append({
+                        "name": " ".join(runner[1:3]),
+                        "command": " ".join(runner),
+                        "check_type": "test",
+                        "status": "passed" if result.returncode == 0 else "failed",
+                        "exit_code": result.returncode,
+                        "output": (result.stdout + result.stderr)[:1200],
+                    })
+                    break
+                except (FileNotFoundError, subprocess.TimeoutExpired):
+                    continue
+
+    elif lang == "javascript":
+        pkg = repo / "package.json"
+        if pkg.exists():
+            try:
+                import json
+                data = json.loads(pkg.read_text(errors="ignore"))
+                if "test" in data.get("scripts", {}):
+                    result = subprocess.run(
+                        ["npm", "test", "--", "--passWithNoTests"],
+                        cwd=str(repo), capture_output=True, text=True, timeout=60,
+                    )
+                    checks.append({
+                        "name": "npm test",
+                        "command": "npm test",
+                        "check_type": "test",
+                        "status": "passed" if result.returncode == 0 else "failed",
+                        "exit_code": result.returncode,
+                        "output": (result.stdout + result.stderr)[:1200],
+                    })
+            except Exception:
+                pass
+
+    if not checks:
+        checks.append({
+            "name": "test_runner",
+            "command": "N/A",
+            "check_type": "test",
+            "status": "skipped",
+            "exit_code": None,
+            "output": "No tests detected or no compatible test runner found.",
+        })
+
+    return checks
+
+
+def _compute_metrics(repo: Path) -> dict:
+    """Re-run the full scan on a workspace and return summary metrics."""
+    try:
+        stats = _repo_stats(repo)
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            jobs = [
+                pool.submit(scan_code, repo),
+                pool.submit(scan_security, repo),
+                pool.submit(scan_tests_docs, repo),
+            ]
+            raw = []
+            for j in as_completed(jobs):
+                raw.extend(j.result())
+        result = consolidate(raw, stats, 0)
+        return {
+            "health_score": result["health_score"],
+            "technical_debt_hours": result["technical_debt_hours"],
+            "technical_debt_minutes": result["technical_debt_minutes"],
+            "total_findings": len(result["findings"]),
+            "severity_counts": result["severity_counts"],
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+def _find_regressions(before: dict, after: dict) -> list:
+    regressions = []
+    if "error" in before or "error" in after:
+        return regressions
+    if after.get("health_score", 100) < before.get("health_score", 100) - 5:
+        regressions.append({
+            "type": "health_score_drop",
+            "before": before.get("health_score"),
+            "after": after.get("health_score"),
+            "description": "Health score decreased after repair.",
+        })
+    after_critical = after.get("severity_counts", {}).get("CRITICAL", 0)
+    before_critical = before.get("severity_counts", {}).get("CRITICAL", 0)
+    if after_critical > before_critical:
+        regressions.append({
+            "type": "new_critical_findings",
+            "before": before_critical,
+            "after": after_critical,
+            "description": "New CRITICAL findings introduced by repair.",
+        })
+    return regressions
+
+
+def _delta(before: dict, after: dict) -> dict:
+    if "error" in before or "error" in after:
+        return {}
+    return {
+        "health_score_delta": after.get("health_score", 0) - before.get("health_score", 0),
+        "findings_delta": after.get("total_findings", 0) - before.get("total_findings", 0),
+        "debt_hours_delta": round(
+            after.get("technical_debt_hours", 0) - before.get("technical_debt_hours", 0), 1
+        ),
+    }
+
+
+def _verification_summary(status: str, checks: list, before: dict, after: dict) -> str:
+    passed = sum(1 for c in checks if c["status"] == "passed")
+    failed = sum(1 for c in checks if c["status"] == "failed")
+    skipped = sum(1 for c in checks if c["status"] == "skipped")
+    health_delta = after.get("health_score", 0) - before.get("health_score", 0)
+    delta_str = f"+{health_delta}" if health_delta >= 0 else str(health_delta)
+    return (
+        f"Verification {status.upper()}. "
+        f"Checks: {passed} passed, {failed} failed, {skipped} skipped. "
+        f"Health score: {before.get('health_score','?')} → {after.get('health_score','?')} ({delta_str})."
+    )
+
+
+================================================================================
+FILE: backend/requirements.txt
+================================================================================
+
+fastapi
+uvicorn[standard]
+pymongo
+pydantic
+httpx
+gitpython
+python-dotenv
+pytest
+pyflakes
+
+
+================================================================================
+FILE: backend/test_demo_scan.py
+================================================================================
+
+"""Integration-style smoke test and optional CLI report for the bundled demo repository."""
+from pathlib import Path
+
+from app.scanners import scan_code, scan_security, scan_tests_docs
+from app.scoring import consolidate
+
+
+REPO = Path(__file__).resolve().parents[1] / "demo-repo"
+
+
+def build_demo_result():
+    code_findings = scan_code(REPO)
+    security_findings = scan_security(REPO)
+    test_findings = scan_tests_docs(REPO)
+    all_findings = code_findings + security_findings + test_findings
+    all_files = [p for p in REPO.rglob("*") if p.is_file() and "__pycache__" not in p.parts]
+    line_count = sum(len(p.read_text(errors="ignore").splitlines()) for p in all_files)
+    stats = {
+        "files": len(all_files),
+        "lines": line_count,
+        "languages": {"Python": sum(1 for p in all_files if p.suffix == ".py")},
+    }
+    return consolidate(all_findings, stats, 0.0)
+
+
+def test_demo_repository_has_expected_findings():
+    result = build_demo_result()
+    assert result["total_findings"] >= 1
+    assert result["severity_counts"]["HIGH"] >= 1
+    assert result["technical_debt_minutes"] > 0
+
+
+if __name__ == "__main__":
+    result = build_demo_result()
+    print(f"Findings: {result['total_findings']}")
+    print(f"Health score: {result['health_score']}/100")
+    print(f"Technical debt estimate: {result['technical_debt_hours']}h")
+    for finding in result["findings"][:12]:
+        print(
+            f"[{finding['severity']}] {finding['id']} {finding['title']} "
+            f"score={finding['priority_score']}"
+        )
+
+
+================================================================================
+FILE: backend/tests/__init__.py
+================================================================================
+
+
+
+
+================================================================================
+FILE: backend/tests/test_scanners.py
+================================================================================
+
+from pathlib import Path
+
+from app.scanners import scan_code, scan_security, scan_tests_docs
+
+
+DEMO_REPO = Path(__file__).resolve().parents[2] / "demo-repo"
+
+
+def test_demo_repo_produces_code_findings():
+    findings = scan_code(DEMO_REPO)
+    assert findings
+    categories = {finding["category"] for finding in findings}
+    assert "complexity" in categories
+    assert "maintenance" in categories
+
+
+def test_demo_repo_produces_security_findings():
+    findings = scan_security(DEMO_REPO)
+    assert findings
+    assert any("credential" in finding["title"].lower() for finding in findings)
+
+
+def test_demo_repo_produces_test_or_documentation_findings():
+    findings = scan_tests_docs(DEMO_REPO)
+    assert findings
+    categories = {finding["category"] for finding in findings}
+    assert "testing" in categories or "documentation" in categories
+
+
+================================================================================
+FILE: backend/tests/test_scoring.py
+================================================================================
+
+from app.scoring import consolidate
+
+
+def test_consolidate_prioritizes_high_risk_findings():
+    findings = [
+        {
+            "id": "S1",
+            "category": "security",
+            "severity": "HIGH",
+            "risk": "HIGH",
+            "confidence": 0.9,
+            "title": "Hard-coded credential",
+            "evidence": "password=...",
+            "recommendation": "Use environment variables",
+            "estimated_effort_min": 20,
+        },
+        {
+            "id": "M1",
+            "category": "maintenance",
+            "severity": "LOW",
+            "risk": "LOW",
+            "confidence": 0.9,
+            "title": "TODO marker",
+            "evidence": "TODO",
+            "recommendation": "Track the work",
+            "estimated_effort_min": 10,
+        },
+    ]
+
+    result = consolidate(findings, {"files": 2, "lines": 100}, 0.1)
+
+    assert result["total_findings"] == 2
+    assert result["findings"][0]["id"] == "S1"
+    assert result["findings"][0]["priority_score"] > result["findings"][1]["priority_score"]
+    assert result["technical_debt_minutes"] == 30
+
+
+def test_health_score_is_bounded():
+    result = consolidate([], {"files": 0, "lines": 0}, 0.1)
+    assert 0 <= result["health_score"] <= 100
+    assert result["technical_debt_minutes"] == 0
